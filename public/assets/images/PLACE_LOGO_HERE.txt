@@ -1,0 +1,41 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║                    WELLMOM LOGO LOCATION                     ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📍 SIMPAN LOGO WELLMOM DI FOLDER INI
+
+Nama file yang diperlukan:
+  ✅ logo-wellmom.png
+
+Spesifikasi:
+  • Format: PNG dengan background transparan
+  • Ukuran minimum: 200 x 200 px  
+  • Ukuran recommended: 512 x 512 px
+  • Warna primary: #3B9ECF (biru WellMom)
+
+Path lengkap:
+  wellmom_web/public/assets/images/logo-wellmom.png
+
+Setelah menambahkan logo:
+  1. Hapus file PLACE_LOGO_HERE.txt ini (opsional)
+  2. Restart development server
+  3. Refresh browser
+
+---
+
+💡 TIPS:
+- Logo akan muncul di halaman login dan register
+- Jika logo belum tersedia, aplikasi tetap berfungsi (hanya icon broken image)
+- Logo harus memiliki kontras yang baik untuk background putih dan biru
+
+---
+
+🎨 DESIGN REFERENCES:
+Lihat file desain yang di-upload untuk reference logo WellMom.
+Logo menampilkan ikon ibu dan bayi dengan warna biru #3B9ECF.
+
+---
+
+Built with ❤️ for WellMom
