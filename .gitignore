@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# local env files
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
@@ -39,3 +42,92 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDEs and Editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Development & Debugging Documentation
+# (These are temporary files created during development)
+*_FIX.md
+*_FIXES.md
+*_QUICK_*.md
+*_COMPLETE*.md
+*_SUMMARY*.md
+*_GUIDE.md
+*_DOCUMENTATION.md
+DEBUGGING_*.md
+ERROR_*.md
+TESTING_*.md
+TROUBLESHOOTING_*.md
+IMPLEMENTATION_*.md
+UPDATES_*.md
+MIGRATION_*.md
+VISUAL_*.txt
+*_QUICK_FIX.txt
+CREATE_ENV_FILE.md
+
+# Cursor AI specific
+.cursor/
+.cursorignore
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Logs
+logs/
+*.log
+
+# Lock files (choose one based on your package manager)
+# Uncomment if you want to ignore lock files
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Build artifacts
+dist/
+.next/
+out/
+build/
+
+# Cache
+.cache/
+.turbo/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Test coverage
+coverage/
+.nyc_output/
+
+.md

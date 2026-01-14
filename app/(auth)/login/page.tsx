@@ -6,18 +6,42 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Loader2, Shield, Building2, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import type { UserRole } from '@/lib/types/auth';
+
+type LoginTab = 'super_admin' | 'puskesmas' | 'perawat';
+
+const LOGIN_TABS = [
+  {
+    id: 'super_admin' as LoginTab,
+    label: 'Super Admin',
+    icon: Shield,
+    description: 'Kementerian Kesehatan',
+  },
+  {
+    id: 'puskesmas' as LoginTab,
+    label: 'Puskesmas',
+    icon: Building2,
+    description: 'Admin Puskesmas',
+  },
+  {
+    id: 'perawat' as LoginTab,
+    label: 'Perawat',
+    icon: Stethoscope,
+    description: 'Perawat Puskesmas',
+  },
+] as const;
 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<LoginTab>('puskesmas');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -25,53 +49,100 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
-      remember: false,
     },
   });
-
-  const rememberMe = watch('remember');
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setErrorMessage('');
 
     try {
-      const response = await authApi.login({
+      console.log('🔑 Attempting login as:', activeTab);
+      console.log('📧 Email:', data.email);
+
+      const response = await authApi.login(activeTab as UserRole, {
         email: data.email,
         password: data.password,
-        remember: data.remember,
       });
 
-      if (response.success && response.data) {
-        // Simpan auth state
-        setAuth(response.data.user, response.data.token);
+      console.log('✅ Login API Response:', response);
+      console.log('👤 User Role:', response.role);
+      console.log('🎫 Access Token:', response.access_token ? '✓ Present' : '✗ Missing');
 
-        // Redirect berdasarkan role
-        const roleRoutes = {
-          super_admin: '/super-admin/dashboard',
-          puskesmas: '/puskesmas/dashboard',
-          perawat: '/perawat/dashboard',
-        };
+      // Simpan auth state
+      console.log('💾 Saving auth state...');
+      setAuth(response);
+      console.log('✅ Auth state saved');
 
-        router.push(roleRoutes[response.data.user.role]);
-      } else {
-        setErrorMessage(response.message || 'Login gagal. Silakan coba lagi.');
-      }
+      // Redirect berdasarkan role (using route constants)
+      const { getDashboardRoute } = await import('@/lib/constants/routes');
+      const dashboardRoute = getDashboardRoute(response.role);
+      
+      console.log('🚀 Redirecting to:', dashboardRoute);
+      
+      // Use window.location instead of router.push for more reliable redirect
+      await router.push(dashboardRoute);
+      
+      console.log('✅ Router.push completed');
+      
+      // Force reload to ensure state is persisted
+      setTimeout(() => {
+        console.log('🔄 Checking if navigation happened...');
+        if (window.location.pathname === '/login') {
+          console.warn('⚠️ Still on login page, forcing navigation...');
+          window.location.href = dashboardRoute;
+        }
+      }, 500);
+      
     } catch (error) {
-      setErrorMessage('Terjadi kesalahan. Silakan coba lagi.');
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Login gagal. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const getPlaceholderEmail = () => {
+    switch (activeTab) {
+      case 'super_admin':
+        return 'superadmin@wellmom.go.id';
+      case 'puskesmas':
+        return 'admin@puskesmas.go.id';
+      case 'perawat':
+        return 'perawat@puskesmas.go.id';
+    }
+  };
+
+  const getBrandingContent = () => {
+    switch (activeTab) {
+      case 'super_admin':
+        return {
+          title: 'Kelola Sistem WellMom Nasional',
+          description:
+            'Portal Super Admin untuk mengelola registrasi puskesmas, monitoring sistem, dan pengawasan data kesehatan ibu hamil secara nasional.',
+        };
+      case 'puskesmas':
+        return {
+          title: 'Digitalizing Public Health for a Better Future.',
+          description:
+            'Access the integrated management portal for Puskesmas administrators and health ministry officials.',
+        };
+      case 'perawat':
+        return {
+          title: 'Monitoring Kesehatan Ibu Hamil',
+          description:
+            'Portal perawat untuk input data, monitoring kondisi ibu hamil, dan koordinasi perawatan dengan tim kesehatan.',
+        };
+    }
+  };
+
+  const branding = getBrandingContent();
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -90,15 +161,8 @@ export default function LoginPage() {
           </div>
 
           <div className="max-w-lg">
-            <h1 className="text-5xl font-bold mb-6 leading-tight">
-              Digitalizing Public Health
-              <br />
-              for a Better Future.
-            </h1>
-            <p className="text-lg text-white/90">
-              Access the integrated management portal for Puskesmas administrators and health
-              ministry officials.
-            </p>
+            <h1 className="text-5xl font-bold mb-6 leading-tight">{branding.title}</h1>
+            <p className="text-lg text-white/90">{branding.description}</p>
           </div>
         </div>
 
@@ -135,8 +199,44 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Wellmom</h2>
-            <p className="text-gray-600">Please enter your credentials to access the admin portal.</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to WellMom</h2>
+            <p className="text-gray-600">Please select your role and enter your credentials.</p>
+          </div>
+
+          {/* Tab Selector */}
+          <div className="mb-6">
+            <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100 rounded-lg">
+              {LOGIN_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setErrorMessage('');
+                    }}
+                    className={`
+                      flex flex-col items-center justify-center p-3 rounded-md transition-all duration-200
+                      ${
+                        isActive
+                          ? 'bg-white shadow-sm text-[#3B9ECF] font-semibold'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }
+                    `}
+                  >
+                    <Icon className={`h-5 w-5 mb-1 ${isActive ? 'text-[#3B9ECF]' : 'text-gray-500'}`} />
+                    <span className="text-xs lg:text-sm">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 text-center">
+              <p className="text-sm text-gray-500">
+                {LOGIN_TABS.find((tab) => tab.id === activeTab)?.description}
+              </p>
+            </div>
           </div>
 
           {errorMessage && (
@@ -154,25 +254,20 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@puskesmas.go.id"
+                  placeholder={getPlaceholderEmail()}
                   className="pl-10"
                   {...register('email')}
                   disabled={isLoading}
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-[#3B9ECF] hover:underline"
-                >
+                <Link href="/forgot-password" className="text-sm text-[#3B9ECF] hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -192,32 +287,10 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   disabled={isLoading}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setValue('remember', checked as boolean)}
-                disabled={isLoading}
-              />
-              <Label
-                htmlFor="remember"
-                className="text-sm font-normal cursor-pointer"
-              >
-                Remember me
-              </Label>
+              {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
             </div>
 
             {/* Login Button */}
@@ -232,32 +305,33 @@ export default function LoginPage() {
                   Logging in...
                 </>
               ) : (
-                'Login'
+                `Login as ${LOGIN_TABS.find((tab) => tab.id === activeTab)?.label}`
               )}
             </Button>
 
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">atau</span>
-              </div>
-            </div>
+            {/* Divider - Only show for puskesmas */}
+            {activeTab === 'puskesmas' && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">atau</span>
+                  </div>
+                </div>
 
-            {/* Register Link */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Belum punya akun?{' '}
-                <Link
-                  href="/register"
-                  className="font-semibold text-[#3B9ECF] hover:underline"
-                >
-                  Daftar sebagai Puskesmas
-                </Link>
-              </p>
-            </div>
+                {/* Register Link - Only for Puskesmas */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    Belum punya akun?{' '}
+                    <Link href="/register" className="font-semibold text-[#3B9ECF] hover:underline">
+                      Daftar sebagai Puskesmas
+                    </Link>
+                  </p>
+                </div>
+              </>
+            )}
           </form>
 
           {/* Footer */}

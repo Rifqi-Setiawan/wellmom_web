@@ -8,8 +8,7 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(1, 'Password harus diisi')
-    .min(8, 'Password minimal 8 karakter'),
-  remember: z.boolean().optional(),
+    .min(6, 'Password minimal 6 karakter'),
 });
 
 export const registerSchema = z

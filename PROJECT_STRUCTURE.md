@@ -1,394 +1,366 @@
-# 📂 WellMom Project Structure
+# 📁 WellMom Project Structure - Multi-Role Architecture
 
-## Complete File Tree
+## 🎯 Overview
+
+WellMom memiliki **3 role utama**:
+1. **Super Admin** - Kementerian Kesehatan (mengelola puskesmas)
+2. **Puskesmas** - Admin Puskesmas (mengelola perawat dan data)
+3. **Perawat** - Perawat Puskesmas (monitoring ibu hamil)
+
+---
+
+## 📂 Recommended Folder Structure
 
 ```
 wellmom_web/
-│
-├── 📁 app/
-│   ├── 📁 (auth)/                          # Route group untuk auth pages
-│   │   ├── 📁 login/
-│   │   │   └── 📄 page.tsx                 # ✨ Login Page
-│   │   ├── 📁 register/
-│   │   │   └── 📄 page.tsx                 # ✨ Register Page (Puskesmas)
-│   │   └── 📄 layout.tsx                   # Layout untuk auth pages
+├── app/
+│   ├── (auth)/                           # 🔓 Public Routes (No Auth Required)
+│   │   ├── login/
+│   │   │   └── page.tsx                  # Login page (all roles)
+│   │   ├── register/
+│   │   │   └── page.tsx                  # Register page (puskesmas only)
+│   │   ├── forgot-password/
+│   │   │   └── page.tsx                  # Forgot password
+│   │   └── layout.tsx                    # Auth layout
 │   │
-│   ├── 📄 favicon.ico                      # App icon
-│   ├── 📄 globals.css                      # ⚙️ Global styles (WellMom colors)
-│   ├── 📄 layout.tsx                       # Root layout
-│   └── 📄 page.tsx                         # Home (redirect ke /login)
-│
-├── 📁 components/
-│   └── 📁 ui/                              # shadcn/ui components
-│       ├── 📄 button.tsx                   # Button component
-│       ├── 📄 checkbox.tsx                 # Checkbox component
-│       ├── 📄 input.tsx                    # Input component
-│       └── 📄 label.tsx                    # Label component
-│
-├── 📁 lib/
-│   ├── 📁 api/
-│   │   └── 📄 auth.ts                      # 🔌 API client untuk autentikasi
+│   ├── (dashboard)/                      # 🔒 Protected Routes (Auth Required)
+│   │   ├── super-admin/                  # 👑 Super Admin Routes
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx              # Super admin dashboard
+│   │   │   ├── puskesmas/
+│   │   │   │   ├── page.tsx              # Puskesmas list
+│   │   │   │   ├── pending/
+│   │   │   │   │   └── page.tsx          # Pending approvals
+│   │   │   │   └── [id]/
+│   │   │   │       └── page.tsx          # Puskesmas detail
+│   │   │   ├── perawat/
+│   │   │   │   └── page.tsx              # All perawat list
+│   │   │   ├── reports/
+│   │   │   │   └── page.tsx              # Reports & analytics
+│   │   │   ├── settings/
+│   │   │   │   └── page.tsx              # System settings
+│   │   │   └── layout.tsx                # Super admin layout
+│   │   │
+│   │   ├── puskesmas/                    # 🏥 Puskesmas Routes
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx              # Puskesmas dashboard
+│   │   │   ├── perawat/
+│   │   │   │   ├── page.tsx              # Perawat management
+│   │   │   │   ├── tambah/
+│   │   │   │   │   └── page.tsx          # Add perawat
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx          # Perawat detail
+│   │   │   │       └── edit/
+│   │   │   │           └── page.tsx      # Edit perawat
+│   │   │   ├── ibu-hamil/
+│   │   │   │   ├── page.tsx              # Ibu hamil list
+│   │   │   │   ├── tambah/
+│   │   │   │   │   └── page.tsx          # Add ibu hamil
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx          # Ibu hamil detail
+│   │   │   │       └── edit/
+│   │   │   │           └── page.tsx      # Edit ibu hamil
+│   │   │   ├── laporan/
+│   │   │   │   └── page.tsx              # Reports
+│   │   │   ├── profile/
+│   │   │   │   └── page.tsx              # Puskesmas profile
+│   │   │   └── layout.tsx                # Puskesmas layout
+│   │   │
+│   │   └── perawat/                      # 👩‍⚕️ Perawat Routes
+│   │       ├── dashboard/
+│   │       │   └── page.tsx              # Perawat dashboard
+│   │       ├── pasien/
+│   │       │   ├── page.tsx              # Pasien list
+│   │       │   ├── tambah/
+│   │       │   │   └── page.tsx          # Add pasien
+│   │       │   └── [id]/
+│   │       │       ├── page.tsx          # Pasien detail
+│   │       │       ├── checkup/
+│   │       │       │   └── page.tsx      # Add checkup record
+│   │       │       └── riwayat/
+│   │       │           └── page.tsx      # Checkup history
+│   │       ├── jadwal/
+│   │       │   └── page.tsx              # Schedule
+│   │       ├── profile/
+│   │       │   └── page.tsx              # Perawat profile
+│   │       └── layout.tsx                # Perawat layout
 │   │
-│   ├── 📁 stores/
-│   │   └── 📄 auth-store.ts                # 💾 Zustand store untuk auth state
+│   ├── globals.css                       # Global styles
+│   ├── layout.tsx                        # Root layout
+│   └── page.tsx                          # Home (redirect to login)
+│
+├── components/
+│   ├── ui/                               # 🎨 shadcn/ui Components
+│   │   ├── button.tsx
+│   │   ├── input.tsx
+│   │   ├── label.tsx
+│   │   ├── checkbox.tsx
+│   │   ├── select.tsx
+│   │   ├── dialog.tsx
+│   │   ├── table.tsx
+│   │   └── ...
 │   │
-│   ├── 📁 types/
-│   │   └── 📄 auth.ts                      # 📝 TypeScript types & interfaces
+│   ├── shared/                           # 🔄 Shared Components (All Roles)
+│   │   ├── header/
+│   │   │   └── dashboard-header.tsx      # Reusable header
+│   │   ├── sidebar/
+│   │   │   └── dashboard-sidebar.tsx     # Reusable sidebar
+│   │   ├── cards/
+│   │   │   ├── stat-card.tsx             # Metric card
+│   │   │   └── info-card.tsx             # Info card
+│   │   ├── tables/
+│   │   │   ├── data-table.tsx            # Reusable table
+│   │   │   └── pagination.tsx            # Pagination
+│   │   ├── modals/
+│   │   │   ├── confirm-modal.tsx         # Confirmation modal
+│   │   │   └── form-modal.tsx            # Form modal
+│   │   ├── forms/
+│   │   │   └── form-fields.tsx           # Common form fields
+│   │   └── loading/
+│   │       ├── spinner.tsx               # Loading spinner
+│   │       └── skeleton.tsx              # Skeleton loader
 │   │
-│   ├── 📁 validations/
-│   │   └── 📄 auth.ts                      # ✅ Zod schemas untuk validasi
+│   ├── super-admin/                      # 👑 Super Admin Specific
+│   │   ├── puskesmas-approval-card.tsx
+│   │   ├── platform-stats.tsx
+│   │   └── activity-log.tsx
 │   │
-│   └── 📄 utils.ts                         # Utility functions (cn, etc.)
+│   ├── puskesmas/                        # 🏥 Puskesmas Specific
+│   │   ├── perawat-card.tsx
+│   │   ├── patient-overview.tsx
+│   │   └── monthly-report.tsx
+│   │
+│   └── perawat/                          # 👩‍⚕️ Perawat Specific
+│       ├── checkup-form.tsx
+│       ├── patient-card.tsx
+│       └── risk-indicator.tsx
 │
-├── 📁 public/
-│   └── 📁 assets/
-│       └── 📁 images/
-│           ├── 📄 README.md                # Instruksi untuk logo
-│           ├── 📄 PLACE_LOGO_HERE.txt      # Reminder untuk logo
-│           └── 🖼️ logo-wellmom.png         # ⚠️ Logo WellMom (PERLU DITAMBAHKAN)
+├── lib/
+│   ├── api/                              # 🔌 API Clients
+│   │   ├── auth.ts                       # Authentication API
+│   │   ├── statistics.ts                 # Statistics API
+│   │   ├── puskesmas.ts                  # Puskesmas API
+│   │   ├── perawat.ts                    # Perawat API
+│   │   ├── ibu-hamil.ts                  # Ibu hamil API
+│   │   └── checkup.ts                    # Checkup API
+│   │
+│   ├── stores/                           # 💾 State Management (Zustand)
+│   │   ├── auth-store.ts                 # Auth state
+│   │   ├── puskesmas-store.ts            # Puskesmas state
+│   │   ├── perawat-store.ts              # Perawat state
+│   │   └── ui-store.ts                   # UI state (sidebar, modals)
+│   │
+│   ├── types/                            # 📝 TypeScript Types
+│   │   ├── auth.ts                       # Auth types
+│   │   ├── statistics.ts                 # Statistics types
+│   │   ├── puskesmas.ts                  # Puskesmas types
+│   │   ├── perawat.ts                    # Perawat types
+│   │   ├── ibu-hamil.ts                  # Ibu hamil types
+│   │   └── common.ts                     # Common types
+│   │
+│   ├── validations/                      # ✅ Zod Validation Schemas
+│   │   ├── auth.ts                       # Auth validation
+│   │   ├── puskesmas.ts                  # Puskesmas validation
+│   │   ├── perawat.ts                    # Perawat validation
+│   │   └── ibu-hamil.ts                  # Ibu hamil validation
+│   │
+│   ├── hooks/                            # 🪝 Custom React Hooks
+│   │   ├── use-auth.ts                   # Auth hooks
+│   │   ├── use-statistics.ts             # Statistics hooks
+│   │   ├── use-pagination.ts             # Pagination hooks
+│   │   └── use-debounce.ts               # Debounce hook
+│   │
+│   ├── constants/                        # 📌 Constants
+│   │   ├── routes.ts                     # Route paths
+│   │   ├── roles.ts                      # User roles
+│   │   └── status.ts                     # Status constants
+│   │
+│   └── utils.ts                          # 🛠️ Utility functions
 │
-├── 📁 node_modules/                        # Dependencies (auto-generated)
+├── public/
+│   └── assets/
+│       └── images/
+│           ├── logo-wellmom.png          # Logo
+│           └── placeholder.png           # Placeholders
 │
-├── 📄 components.json                      # shadcn/ui configuration
-├── 📄 eslint.config.mjs                    # ESLint config
-├── 📄 next.config.ts                       # Next.js config
-├── 📄 next-env.d.ts                        # Next.js TypeScript declarations
-├── 📄 package.json                         # Project dependencies
-├── 📄 package-lock.json                    # Lock file
-├── 📄 postcss.config.mjs                   # PostCSS config
-├── 📄 tsconfig.json                        # TypeScript config
+├── middleware.ts                         # 🔒 Route Protection Middleware
 │
-├── 📄 README.md                            # 📚 Main project documentation
-├── 📄 AUTHENTICATION.md                    # 🔐 Auth system documentation
-├── 📄 QUICKSTART.md                        # 🚀 Quick start guide
-├── 📄 ENV_SETUP.md                         # ⚙️ Environment setup guide
-├── 📄 IMPLEMENTATION_SUMMARY.md            # ✅ What was built
-└── 📄 PROJECT_STRUCTURE.md                 # 📂 This file
+├── .env.local                            # 🔐 Environment variables
+├── .env.example                          # 📋 Example env file
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
-
-## 📋 File Descriptions
-
-### ✨ Main Features (New Files)
-
-#### Authentication Pages
-| File | Purpose | Lines | Status |
-|------|---------|-------|--------|
-| `app/(auth)/login/page.tsx` | Login page dengan form, validation, dan role-based redirect | ~250 | ✅ Done |
-| `app/(auth)/register/page.tsx` | Register page untuk Puskesmas dengan 7 fields + success screen | ~450 | ✅ Done |
-| `app/(auth)/layout.tsx` | Layout wrapper untuk auth pages | ~15 | ✅ Done |
-
-#### API & Business Logic
-| File | Purpose | Lines | Status |
-|------|---------|-------|--------|
-| `lib/api/auth.ts` | API client untuk login, register, logout | ~50 | ✅ Done |
-| `lib/stores/auth-store.ts` | Zustand store untuk auth state management | ~30 | ✅ Done |
-| `lib/types/auth.ts` | TypeScript interfaces untuk auth | ~40 | ✅ Done |
-| `lib/validations/auth.ts` | Zod schemas untuk form validation | ~60 | ✅ Done |
-
-#### Styling
-| File | Purpose | Modification |
-|------|---------|--------------|
-| `app/globals.css` | Updated dengan WellMom primary color (#3B9ECF) | ✅ Modified |
-
-#### Documentation
-| File | Purpose | Lines |
-|------|---------|-------|
-| `README.md` | Main project overview & guide | ~300 |
-| `AUTHENTICATION.md` | Detailed auth flow documentation | ~400 |
-| `QUICKSTART.md` | Quick start guide | ~200 |
-| `ENV_SETUP.md` | Environment variables setup | ~20 |
-| `IMPLEMENTATION_SUMMARY.md` | Complete implementation summary | ~500 |
-| `PROJECT_STRUCTURE.md` | This file - project structure | ~200 |
-
-### 🎨 UI Components (shadcn/ui)
-
-| Component | Used In | Features |
-|-----------|---------|----------|
-| `Button` | Login, Register | Loading state, disabled state, custom colors |
-| `Input` | Login, Register | Icon prefix, password type, disabled state |
-| `Label` | Login, Register | Associated with inputs |
-| `Checkbox` | Login | Remember me functionality |
-
-## 📊 Code Statistics
-
-```
-Total Files Created/Modified: ~20
-Total Lines of Code: ~2,000+
-Total Documentation: ~1,600 lines
-
-Breakdown:
-├── Pages (TSX): ~700 lines
-├── Logic (TS): ~200 lines
-├── Documentation (MD): ~1,600 lines
-└── Config/Styles: ~100 lines
-```
-
-## 🎯 Features by Page
-
-### Login Page (`/login`)
-```
-Features:
-├── Email input with validation
-├── Password input with toggle visibility
-├── Remember me checkbox
-├── Forgot password link
-├── Submit button with loading state
-├── Error message display
-├── Link to register page
-├── Split layout (branding + form)
-├── Responsive design
-└── Role-based redirect
-```
-
-### Register Page (`/register`)
-```
-Features:
-├── 7 input fields with icons
-│   ├── Nama Puskesmas
-│   ├── Email
-│   ├── Password
-│   ├── Password Confirmation
-│   ├── Alamat (textarea)
-│   ├── No. Telepon
-│   └── Nama Kepala Puskesmas
-├── Comprehensive validation
-├── Password strength checker
-├── Submit button with loading state
-├── Error message display
-├── Success screen
-├── Pending approval info
-├── Link to login page
-├── Split layout with benefits
-└── Responsive design
-```
-
-## 🔧 Technology Stack
-
-```
-Frontend Framework:
-└── Next.js 16.1.1 (App Router)
-
-Language:
-└── TypeScript 5
-
-Styling:
-├── Tailwind CSS 4
-└── shadcn/ui components
-
-State Management:
-└── Zustand (with persist)
-
-Form Handling:
-├── React Hook Form
-├── Zod (validation)
-└── @hookform/resolvers
-
-HTTP Client:
-└── Axios
-
-Icons:
-└── Lucide React
-
-Other:
-├── class-variance-authority
-├── clsx
-└── tailwind-merge
-```
-
-## 📱 Responsive Breakpoints
-
-```
-Mobile (< 1024px):
-├── Full width form
-├── Logo at top center
-└── Stack layout
-
-Desktop (≥ 1024px):
-├── Split screen 50:50
-├── Branding left (blue)
-├── Form right (white)
-└── Logo at top-left of branding
-```
-
-## 🎨 Design System
-
-```
-Colors:
-├── Primary: #3B9ECF (oklch(0.63 0.095 231.5))
-├── Background: #FFFFFF
-├── Text Primary: Gray-900
-└── Text Secondary: Gray-600
-
-Typography:
-├── Font Family: Geist Sans
-├── Headings: Bold
-└── Body: Regular
-
-Spacing:
-├── Container: max-w-md (28rem)
-├── Padding: p-8
-└── Gap: space-y-6
-
-Radius:
-└── Default: 0.625rem (10px)
-```
-
-## 🔐 Authentication Flow
-
-```
-Login:
-User Input (email + password)
-    ↓
-Form Validation (Zod)
-    ↓
-API Call (/api/auth/login)
-    ↓
-Response (user + token + role)
-    ↓
-Store in Zustand + LocalStorage
-    ↓
-Redirect based on role
-    ├── super_admin → /super-admin/dashboard
-    ├── puskesmas → /puskesmas/dashboard
-    └── perawat → /perawat/dashboard
-```
-
-```
-Register:
-User Input (7 fields)
-    ↓
-Form Validation (Zod)
-    ↓
-API Call (/api/auth/register/puskesmas)
-    ↓
-Response (success + status: pending)
-    ↓
-Show Success Screen
-    ↓
-User informed about approval process
-    ↓
-Cannot login until approved
-```
-
-## 🔌 API Endpoints Expected
-
-```
-POST /api/auth/login
-├── Body: { email, password, remember }
-└── Response: { success, data: { user, token }, message }
-
-POST /api/auth/register/puskesmas
-├── Body: { nama_puskesmas, email, password, ... }
-└── Response: { success, data: { id, email, status }, message }
-
-POST /api/auth/logout
-├── Headers: { Authorization: Bearer {token} }
-└── Response: { success }
-```
-
-## 📦 Environment Variables
-
-```
-Required:
-└── NEXT_PUBLIC_API_URL    # Backend API base URL
-
-Example (.env.local):
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-```
-
-## ⚠️ Important Notes
-
-### 1. Logo Required
-```
-⚠️ Simpan logo WellMom di:
-   public/assets/images/logo-wellmom.png
-
-Tanpa logo, aplikasi tetap jalan tapi akan muncul broken image.
-```
-
-### 2. Backend Integration
-```
-⚠️ Backend harus menyediakan endpoints:
-   - POST /api/auth/login
-   - POST /api/auth/register/puskesmas
-   
-Sesuaikan dengan interface di lib/types/auth.ts
-```
-
-### 3. Protected Routes
-```
-⚠️ Dashboard routes belum dibuat:
-   - /super-admin/dashboard
-   - /puskesmas/dashboard
-   - /perawat/dashboard
-   
-Buat halaman ini dan tambahkan middleware untuk protection.
-```
-
-## ✅ Testing Checklist
-
-### Pre-launch Checklist
-- [ ] Logo WellMom sudah ditambahkan
-- [ ] File `.env.local` sudah dibuat
-- [ ] Backend API sudah running
-- [ ] NEXT_PUBLIC_API_URL sudah sesuai
-- [ ] Test login dengan berbagai role
-- [ ] Test register flow lengkap
-- [ ] Test validasi form (error cases)
-- [ ] Test responsive di mobile
-- [ ] Test di berbagai browser
-- [ ] Check console untuk errors
-
-### Manual Testing
-- [ ] Login: Form validation works
-- [ ] Login: Toggle password visibility
-- [ ] Login: Remember me checkbox
-- [ ] Login: Error message on failed login
-- [ ] Login: Loading state on submit
-- [ ] Login: Redirect based on role
-- [ ] Register: All field validations
-- [ ] Register: Password strength check
-- [ ] Register: Password match validation
-- [ ] Register: Success screen appears
-- [ ] Register: Link to login works
-- [ ] Both: Responsive on mobile
-- [ ] Both: Links navigation works
-
-## 🚀 Deployment Checklist
-
-- [ ] Build passes: `npm run build`
-- [ ] No TypeScript errors
-- [ ] No ESLint errors
-- [ ] Environment variables set in production
-- [ ] Logo uploaded to production
-- [ ] API URL configured for production
-- [ ] Test in production environment
-- [ ] SSL certificate active (HTTPS)
-
-## 📞 Support & Documentation
-
-**Quick References:**
-- 🚀 **Quick Start**: [QUICKSTART.md](./QUICKSTART.md)
-- 🔐 **Auth Details**: [AUTHENTICATION.md](./AUTHENTICATION.md)
-- 📖 **Main Docs**: [README.md](./README.md)
-- ⚙️ **Environment**: [ENV_SETUP.md](./ENV_SETUP.md)
-- ✅ **Summary**: [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)
 
 ---
 
-## 🎉 Status: COMPLETE
+## 🎯 Key Principles
 
-✅ All authentication pages implemented
-✅ All validations working
-✅ API integration ready
-✅ State management configured
-✅ Documentation complete
-✅ No linting errors
-✅ Production ready
+### 1. **Route Organization by Role**
+```
+(dashboard)/
+├── super-admin/    → Only super admin can access
+├── puskesmas/      → Only puskesmas can access
+└── perawat/        → Only perawat can access
+```
 
-**Last Updated**: January 13, 2026
-**Version**: 1.0.0
+### 2. **Component Organization by Reusability**
+```
+components/
+├── ui/             → Basic UI components (buttons, inputs)
+├── shared/         → Shared across all roles (header, sidebar)
+├── super-admin/    → Super admin specific
+├── puskesmas/      → Puskesmas specific
+└── perawat/        → Perawat specific
+```
+
+### 3. **Separation of Concerns**
+```
+lib/
+├── api/            → API calls
+├── stores/         → State management
+├── types/          → Type definitions
+├── validations/    → Form validations
+└── hooks/          → Reusable logic
+```
 
 ---
 
-**Built with ❤️ for WellMom Healthcare System**
+## 🔒 Route Protection Strategy
+
+### Middleware (`middleware.ts`)
+```typescript
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const token = request.cookies.get('wellmom-auth')?.value;
+  
+  // Protect dashboard routes
+  if (path.startsWith('/super-admin')) {
+    // Check super admin role
+  }
+  if (path.startsWith('/puskesmas')) {
+    // Check puskesmas role
+  }
+  if (path.startsWith('/perawat')) {
+    // Check perawat role
+  }
+}
+```
+
+---
+
+## 📋 Migration Plan
+
+### Phase 1: Create New Structure ✅
+- Create all necessary folders
+- Move existing files to new locations
+
+### Phase 2: Refactor Components 🔄
+- Extract shared components
+- Create role-specific components
+
+### Phase 3: Add Missing Routes 📍
+- Create puskesmas dashboard
+- Create perawat dashboard
+- Add CRUD pages
+
+### Phase 4: Implement Middleware 🔒
+- Route protection
+- Role-based access control
+
+---
+
+## 🚀 Benefits
+
+### ✅ **Scalability**
+- Easy to add new features per role
+- Clear separation of concerns
+
+### ✅ **Maintainability**
+- Easy to find files
+- Consistent structure
+
+### ✅ **Reusability**
+- Shared components reduce duplication
+- DRY principle
+
+### ✅ **Type Safety**
+- Centralized types
+- Better IDE support
+
+### ✅ **Team Collaboration**
+- Clear boundaries
+- Easy to assign tasks
+
+---
+
+## 📝 Naming Conventions
+
+### Files
+- `kebab-case` for files: `user-profile.tsx`
+- `PascalCase` for components: `UserProfile`
+- `camelCase` for functions: `fetchUserData`
+
+### Folders
+- `kebab-case`: `ibu-hamil/`, `super-admin/`
+- Group by feature: `puskesmas/perawat/`
+
+### Routes
+- `kebab-case`: `/super-admin/puskesmas/`
+- Plural for collections: `/patients/`, `/reports/`
+- Singular for single items: `/patient/[id]/`
+
+---
+
+## 🎨 Component Structure Example
+
+### Shared Component
+```
+components/shared/cards/stat-card.tsx
+```
+Used by: Super Admin, Puskesmas, Perawat
+
+### Role-Specific Component
+```
+components/puskesmas/perawat-card.tsx
+```
+Used by: Puskesmas only
+
+---
+
+## 🔄 Import Path Examples
+
+```typescript
+// UI Components
+import { Button } from '@/components/ui/button';
+
+// Shared Components
+import { StatCard } from '@/components/shared/cards/stat-card';
+
+// Role-Specific Components
+import { PerawatCard } from '@/components/puskesmas/perawat-card';
+
+// API
+import { authApi } from '@/lib/api/auth';
+
+// Types
+import type { Puskesmas } from '@/lib/types/puskesmas';
+
+// Hooks
+import { useAuth } from '@/lib/hooks/use-auth';
+```
+
+---
+
+## 📊 Next Steps
+
+1. ✅ **Review & Approve Structure**
+2. 🔄 **Migrate Existing Files**
+3. 📝 **Create Missing Components**
+4. 🎨 **Build Dashboard Layouts**
+5. 🔒 **Implement Middleware**
+6. ✅ **Test All Routes**
+
+---
+
+**Ready to implement? Let's migrate! 🚀**
