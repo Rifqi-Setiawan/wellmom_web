@@ -12,7 +12,6 @@ import {
   FileText,
   UserCheck,
   Baby,
-  TrendingUp,
   ChevronRight,
   Search,
   Download,
@@ -138,8 +137,6 @@ export default function SuperAdminDashboard() {
     {
       title: 'Total Active Puskesmas',
       value: statistics?.total_puskesmas_active || 0,
-      trend: '+2%',
-      trendUp: true,
       icon: Building2,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
@@ -155,8 +152,6 @@ export default function SuperAdminDashboard() {
     {
       title: 'Registered Midwives',
       value: statistics?.total_perawat || 0,
-      trend: '+5%',
-      trendUp: true,
       icon: UserCheck,
       iconBg: 'bg-teal-50',
       iconColor: 'text-teal-600',
@@ -164,8 +159,6 @@ export default function SuperAdminDashboard() {
     {
       title: 'Total Pregnant Women',
       value: statistics?.total_ibu_hamil || 0,
-      trend: '+12%',
-      trendUp: true,
       icon: Baby,
       iconBg: 'bg-purple-50',
       iconColor: 'text-purple-600',
@@ -193,12 +186,6 @@ export default function SuperAdminDashboard() {
               <div className={`${card.iconBg} p-3 rounded-lg`}>
                 <card.icon className={`w-6 h-6 ${card.iconColor}`} />
               </div>
-              {card.trend && (
-                <div className="flex items-center gap-1 text-green-600">
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm font-medium">{card.trend}</span>
-                </div>
-              )}
               {card.badge && (
                 <span className="px-2.5 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
                   {card.badge}
@@ -346,7 +333,11 @@ export default function SuperAdminDashboard() {
                 </tr>
               ) : (
                 paginatedPuskesmas.map((puskesmas, index) => (
-                  <tr key={puskesmas.id} className="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={puskesmas.id} 
+                    onClick={() => router.push(`/super-admin/puskesmas/${puskesmas.id}`)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
@@ -358,7 +349,6 @@ export default function SuperAdminDashboard() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{puskesmas.name}</p>
-                          <p className="text-xs text-gray-500">ID: {puskesmas.id}</p>
                         </div>
                       </div>
                     </td>

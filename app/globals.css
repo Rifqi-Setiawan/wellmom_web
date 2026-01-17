@@ -124,3 +124,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem;
+}

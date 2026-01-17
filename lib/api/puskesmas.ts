@@ -60,13 +60,20 @@ export const puskesmasApi = {
     return response.data;
   },
 
-  // Get puskesmas by ID
+  // Get puskesmas by ID (for detail page)
   getPuskesmasById: async (token: string, id: number): Promise<Puskesmas> => {
-    const response = await api.get<Puskesmas>(`/api/v1/puskesmas/${id}`, {
+    console.log(`🏥 API Request: GET /api/v1/puskesmas/admin/${id}`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.get<Puskesmas>(`/api/v1/puskesmas/admin/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    
+    console.log('🏥 API Response Status:', response.status);
+    console.log('🏥 Puskesmas Detail:', response.data);
+    
     return response.data;
   },
 };
