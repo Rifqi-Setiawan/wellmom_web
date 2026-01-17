@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { statisticsApi } from '@/lib/api/statistics';
 import { puskesmasApi } from '@/lib/api/puskesmas';
+import { regionApi } from '@/lib/api/region';
 import type { PlatformStatistics } from '@/lib/types/statistics';
 import type { Puskesmas } from '@/lib/types/puskesmas';
+import type { Province } from '@/lib/types/region';
+import FilterModal, { type FilterOptions } from '@/components/filters/filter-modal';
 import {
   Building2,
   FileText,
@@ -16,7 +19,11 @@ import {
   Search,
   Download,
   MapPin,
+  Filter,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
+import RejectModal from '@/components/modals/reject-modal';
 
 type TabType = 'active' | 'pending';
 
@@ -32,6 +39,22 @@ export default function SuperAdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Region & Filter states
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
+    status: [],
+    dateRange: { from: '', to: '' },
+    minPregnantWomen: '',
+    minHealthWorkers: '',
+  });
+
+  // Approve/Reject states
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [selectedPuskesmas, setSelectedPuskesmas] = useState<Puskesmas | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   useEffect(() => {
     if (!isAuthenticated || !token || user?.role !== 'super_admin') {
       router.push('/login');
@@ -39,7 +62,65 @@ export default function SuperAdminDashboard() {
     }
 
     fetchAllData();
+    fetchProvinces();
   }, [isAuthenticated, token, user, router]);
+
+  const fetchProvinces = async () => {
+    try {
+      console.log('🔄 Fetching provinces from Indonesian Region API...');
+      const data = await regionApi.getProvinces();
+      console.log('✅ Provinces received:', data.length, 'provinces');
+      setProvinces(data);
+    } catch (error) {
+      console.error('❌ Failed to fetch provinces:', error);
+    }
+  };
+
+  const handleApprove = async (puskesmasId: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    
+    if (!token) return;
+    
+    setIsProcessing(true);
+    try {
+      await puskesmasApi.approvePuskesmas(token, puskesmasId);
+      // Refresh data
+      await fetchAllData();
+      // Show success message (you can add toast notification here)
+      alert('Puskesmas berhasil diapprove!');
+    } catch (error) {
+      console.error('Failed to approve puskesmas:', error);
+      alert('Gagal approve puskesmas. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectClick = (puskesmas: Puskesmas, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setSelectedPuskesmas(puskesmas);
+    setIsRejectModalOpen(true);
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!token || !selectedPuskesmas) return;
+    
+    setIsProcessing(true);
+    try {
+      await puskesmasApi.rejectPuskesmas(token, selectedPuskesmas.id, reason);
+      // Refresh data
+      await fetchAllData();
+      setIsRejectModalOpen(false);
+      setSelectedPuskesmas(null);
+      // Show success message
+      alert('Puskesmas berhasil direject!');
+    } catch (error) {
+      console.error('Failed to reject puskesmas:', error);
+      alert('Gagal reject puskesmas. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const fetchAllData = async () => {
     if (!token) return;
@@ -90,13 +171,54 @@ export default function SuperAdminDashboard() {
   // Get current list based on active tab
   const currentList = activeTab === 'active' ? activePuskesmas : pendingPuskesmas;
 
-  // Filter puskesmas based on search query
-  const filteredPuskesmas = currentList.filter(
-    (p) =>
+  // Apply all filters
+  const filteredPuskesmas = currentList.filter((p) => {
+    // Search filter
+    const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.id.toString().includes(searchQuery)
-  );
+      p.id.toString().includes(searchQuery);
+
+    if (!matchesSearch) return false;
+
+    // Region filter
+    if (selectedRegion !== 'all') {
+      const matchesRegion = p.address.toLowerCase().includes(selectedRegion.toLowerCase());
+      if (!matchesRegion) return false;
+    }
+
+    // Advanced filters
+    // Status filter
+    if (advancedFilters.status.length > 0) {
+      if (!advancedFilters.status.includes(p.registration_status)) return false;
+    }
+
+    // Date range filter
+    if (advancedFilters.dateRange.from) {
+      const puskesmasDate = new Date(p.registration_date);
+      const fromDate = new Date(advancedFilters.dateRange.from);
+      if (puskesmasDate < fromDate) return false;
+    }
+    if (advancedFilters.dateRange.to) {
+      const puskesmasDate = new Date(p.registration_date);
+      const toDate = new Date(advancedFilters.dateRange.to);
+      if (puskesmasDate > toDate) return false;
+    }
+
+    // Min pregnant women filter
+    if (advancedFilters.minPregnantWomen) {
+      const min = parseInt(advancedFilters.minPregnantWomen);
+      if ((p.active_ibu_hamil_count || 0) < min) return false;
+    }
+
+    // Min health workers filter
+    if (advancedFilters.minHealthWorkers) {
+      const min = parseInt(advancedFilters.minHealthWorkers);
+      if ((p.active_perawat_count || 0) < min) return false;
+    }
+
+    return true;
+  });
 
   // Pagination
   const totalPages = Math.ceil(filteredPuskesmas.length / itemsPerPage);
@@ -260,25 +382,52 @@ export default function SuperAdminDashboard() {
             </div>
 
             {/* Region Filter */}
-            <select className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#3B9ECF] bg-white min-w-[140px]">
-              <option>All Regions</option>
-              <option>Central District</option>
-              <option>South District</option>
-              <option>West District</option>
-              <option>North District</option>
+            <select
+              value={selectedRegion}
+              onChange={(e) => {
+                setSelectedRegion(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#3B9ECF] bg-white min-w-[200px]"
+            >
+              <option value="all">All Regions</option>
+              {provinces.map((province) => (
+                <option key={province.id} value={province.name}>
+                  {province.name}
+                </option>
+              ))}
             </select>
 
-            {/* Filters Button */}
-            <button className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
+            {/* Advanced Filters Button */}
+            <button
+              onClick={() => setIsFilterModalOpen(true)}
+              className={`px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                advancedFilters.status.length > 0 ||
+                advancedFilters.dateRange.from ||
+                advancedFilters.dateRange.to ||
+                advancedFilters.minPregnantWomen ||
+                advancedFilters.minHealthWorkers
+                  ? 'bg-[#3B9ECF] text-white border-[#3B9ECF] hover:bg-[#2d7ba8]'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
               Filters
+              {(advancedFilters.status.length > 0 ||
+                advancedFilters.dateRange.from ||
+                advancedFilters.dateRange.to ||
+                advancedFilters.minPregnantWomen ||
+                advancedFilters.minHealthWorkers) && (
+                <span className="px-1.5 py-0.5 bg-white text-[#3B9ECF] rounded text-xs font-semibold">
+                  {[
+                    advancedFilters.status.length,
+                    advancedFilters.dateRange.from ? 1 : 0,
+                    advancedFilters.dateRange.to ? 1 : 0,
+                    advancedFilters.minPregnantWomen ? 1 : 0,
+                    advancedFilters.minHealthWorkers ? 1 : 0,
+                  ].reduce((a, b) => a + b, 0)}
+                </span>
+              )}
             </button>
 
             {/* Export Button */}
@@ -383,10 +532,39 @@ export default function SuperAdminDashboard() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        {activeTab === 'pending' ? (
+                          <>
+                            <button
+                              onClick={(e) => handleApprove(puskesmas.id, e)}
+                              disabled={isProcessing}
+                              className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Approve
+                            </button>
+                            <button
+                              onClick={(e) => handleRejectClick(puskesmas, e)}
+                              disabled={isProcessing}
+                              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              Reject
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/super-admin/puskesmas/${puskesmas.id}`);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -471,6 +649,31 @@ export default function SuperAdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={(filters) => {
+          setAdvancedFilters(filters);
+          setCurrentPage(1);
+        }}
+        currentFilters={advancedFilters}
+      />
+
+      {/* Reject Modal */}
+      {selectedPuskesmas && (
+        <RejectModal
+          isOpen={isRejectModalOpen}
+          onClose={() => {
+            setIsRejectModalOpen(false);
+            setSelectedPuskesmas(null);
+          }}
+          onConfirm={handleRejectConfirm}
+          puskesmasName={selectedPuskesmas.name}
+          isLoading={isProcessing}
+        />
+      )}
     </div>
   );
 }

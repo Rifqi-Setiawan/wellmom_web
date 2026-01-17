@@ -76,4 +76,43 @@ export const puskesmasApi = {
     
     return response.data;
   },
+
+  // Approve puskesmas registration
+  approvePuskesmas: async (token: string, id: number): Promise<Puskesmas> => {
+    console.log(`✅ API Request: PUT /api/v1/puskesmas/${id} (Approve)`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.put<Puskesmas>(`/api/v1/puskesmas/${id}`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('✅ API Response Status:', response.status);
+    console.log('✅ Puskesmas Approved:', response.data);
+    
+    return response.data;
+  },
+
+  // Reject puskesmas registration
+  rejectPuskesmas: async (token: string, id: number, rejectionReason: string): Promise<void> => {
+    console.log(`❌ API Request: POST /api/v1/puskesmas/${id}/reject`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    console.log('📝 Rejection Reason:', rejectionReason);
+    
+    const response = await api.post(
+      `/api/v1/puskesmas/${id}/reject`,
+      {
+        rejection_reason: rejectionReason,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    console.log('❌ API Response Status:', response.status);
+    console.log('❌ Puskesmas Rejected');
+  },
 };

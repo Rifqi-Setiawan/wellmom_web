@@ -16,8 +16,11 @@ import {
   Image as ImageIcon,
   Download,
   ExternalLink,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import RejectModal from '@/components/modals/reject-modal';
 
 // Import Map component dynamically to avoid SSR issues
 const MapView = dynamic(() => import('@/components/maps/map-view'), {
@@ -39,6 +42,8 @@ export default function PuskesmasDetailPage() {
   const [puskesmas, setPuskesmas] = useState<Puskesmas | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const puskesmasId = params?.id ? parseInt(params.id as string) : null;
 
@@ -93,6 +98,41 @@ export default function PuskesmasDetailPage() {
       },
     };
     return badges[status as keyof typeof badges] || badges.draft;
+  };
+
+  const handleApprove = async () => {
+    if (!token || !puskesmasId) return;
+    
+    setIsProcessing(true);
+    try {
+      await puskesmasApi.approvePuskesmas(token, puskesmasId);
+      // Refresh data
+      await fetchPuskesmasDetail();
+      alert('Puskesmas berhasil diapprove!');
+    } catch (error) {
+      console.error('Failed to approve puskesmas:', error);
+      alert('Gagal approve puskesmas. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!token || !puskesmasId) return;
+    
+    setIsProcessing(true);
+    try {
+      await puskesmasApi.rejectPuskesmas(token, puskesmasId, reason);
+      setIsRejectModalOpen(false);
+      // Refresh data
+      await fetchPuskesmasDetail();
+      alert('Puskesmas berhasil direject!');
+    } catch (error) {
+      console.error('Failed to reject puskesmas:', error);
+      alert('Gagal reject puskesmas. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (isLoading) {
@@ -154,6 +194,26 @@ export default function PuskesmasDetailPage() {
             {statusBadge.label}
           </span>
         </div>
+        {puskesmas.registration_status === 'pending_approval' && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleApprove}
+              disabled={isProcessing}
+              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {isProcessing ? 'Processing...' : 'Approve'}
+            </button>
+            <button
+              onClick={() => setIsRejectModalOpen(true)}
+              disabled={isProcessing}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <XCircle className="w-4 h-4" />
+              Reject
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Section 1: Data Puskesmas */}
@@ -375,6 +435,15 @@ export default function PuskesmasDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={isRejectModalOpen}
+        onClose={() => setIsRejectModalOpen(false)}
+        onConfirm={handleRejectConfirm}
+        puskesmasName={puskesmas.name}
+        isLoading={isProcessing}
+      />
     </div>
   );
 }
