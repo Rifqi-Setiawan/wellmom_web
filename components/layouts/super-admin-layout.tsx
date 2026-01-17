@@ -10,7 +10,6 @@ import {
   Bell,
   HelpCircle,
   LayoutDashboard,
-  Building2,
   Users,
   Heart,
   FileText,
@@ -28,12 +27,6 @@ const MENU_ITEMS = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     href: ROUTES.SUPER_ADMIN.DASHBOARD,
-  },
-  {
-    id: 'puskesmas',
-    label: 'Puskesmas List',
-    icon: Building2,
-    href: ROUTES.SUPER_ADMIN.PUSKESMAS.LIST,
   },
   {
     id: 'health-workers',
