@@ -12,11 +12,18 @@ const api = axios.create({
 
 export const statisticsApi = {
   getPlatformStatistics: async (token: string): Promise<PlatformStatistics> => {
+    console.log('📊 API Request: GET /api/v1/statistics/platform');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
     const response = await api.get<PlatformStatistics>('/api/v1/statistics/platform', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    
+    console.log('📊 API Response Status:', response.status);
+    console.log('📊 Statistics Data:', response.data);
+    
     return response.data;
   },
 };

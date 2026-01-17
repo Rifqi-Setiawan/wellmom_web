@@ -13,21 +13,37 @@ const api = axios.create({
 export const puskesmasApi = {
   // Get active puskesmas list
   getActivePuskesmas: async (token: string): Promise<Puskesmas[]> => {
+    console.log('🏥 API Request: GET /api/v1/puskesmas/admin/active');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
     const response = await api.get<Puskesmas[]>('/api/v1/puskesmas/admin/active', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    
+    console.log('🏥 API Response Status:', response.status);
+    console.log('🏥 Active Puskesmas Count:', response.data.length);
+    console.log('🏥 Sample Data:', response.data[0]);
+    
     return response.data;
   },
 
   // Get pending puskesmas list
   getPendingPuskesmas: async (token: string): Promise<Puskesmas[]> => {
+    console.log('⏳ API Request: GET /api/v1/puskesmas/pending');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
     const response = await api.get<Puskesmas[]>('/api/v1/puskesmas/pending', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    
+    console.log('⏳ API Response Status:', response.status);
+    console.log('⏳ Pending Puskesmas Count:', response.data.length);
+    console.log('⏳ Sample Data:', response.data[0]);
+    
     return response.data;
   },
 

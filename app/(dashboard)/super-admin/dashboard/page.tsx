@@ -47,33 +47,39 @@ export default function SuperAdminDashboard() {
 
     setIsLoading(true);
     try {
-      // Fetch statistics
+      // Fetch statistics from backend
+      console.log('🔄 Fetching platform statistics...');
       const stats = await statisticsApi.getPlatformStatistics(token);
+      console.log('✅ Statistics received:', stats);
       setStatistics(stats);
 
-      // Fetch active puskesmas
+      // Fetch active puskesmas from backend
+      console.log('🔄 Fetching active puskesmas...');
       const activeData = await puskesmasApi.getActivePuskesmas(token);
+      console.log('✅ Active puskesmas received:', activeData.length, 'items');
       setActivePuskesmas(activeData);
 
-      // Fetch pending puskesmas
+      // Fetch pending puskesmas from backend
+      console.log('🔄 Fetching pending puskesmas...');
       const pendingData = await puskesmasApi.getPendingPuskesmas(token);
+      console.log('✅ Pending puskesmas received:', pendingData.length, 'items');
       setPendingPuskesmas(pendingData);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
-      // Use dummy data on error
+      console.error('❌ Failed to fetch data:', error);
+      // Set empty data on error instead of dummy data
       setStatistics({
-        total_puskesmas_active: 42,
-        total_puskesmas_pending: 12,
-        total_puskesmas_approved: 42,
+        total_puskesmas_active: 0,
+        total_puskesmas_pending: 0,
+        total_puskesmas_approved: 0,
         total_puskesmas_rejected: 0,
         total_puskesmas_draft: 0,
-        total_perawat: 156,
-        total_perawat_active: 156,
-        total_ibu_hamil: 1204,
-        total_ibu_hamil_active: 1204,
-        total_ibu_hamil_risk_low: 450,
-        total_ibu_hamil_risk_normal: 620,
-        total_ibu_hamil_risk_high: 134,
+        total_perawat: 0,
+        total_perawat_active: 0,
+        total_ibu_hamil: 0,
+        total_ibu_hamil_active: 0,
+        total_ibu_hamil_risk_low: 0,
+        total_ibu_hamil_risk_normal: 0,
+        total_ibu_hamil_risk_high: 0,
       });
       setActivePuskesmas([]);
       setPendingPuskesmas([]);
