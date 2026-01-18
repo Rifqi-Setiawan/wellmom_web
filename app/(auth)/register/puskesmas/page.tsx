@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileUpload } from "@/components/forms/file-upload";
 import { InteractiveMap } from "@/components/maps/interactive-map";
-import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2 } from "lucide-react";
 
 interface RegistrationData {
   name: string;
@@ -33,8 +34,10 @@ const steps = [
 ];
 
 export default function PuskesmasRegistrationPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState<RegistrationData>({
     name: "",
     email: "",
@@ -72,10 +75,12 @@ export default function PuskesmasRegistrationPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    setErrorMessage("");
+    
     try {
       const requestBody = {
         address: formData.address,
-        building_photo_url: formData.building_photo_url,
+        building_photo_url: formData.building_photo_url || "/files/gedung.jpg",
         data_truth_confirmed: formData.data_truth_confirmed,
         email: formData.email,
         kepala_name: formData.kepala_name,
@@ -84,13 +89,14 @@ export default function PuskesmasRegistrationPage() {
         longitude: formData.longitude,
         name: formData.name,
         npwp: formData.npwp,
-        npwp_document_url: formData.npwp_document_url,
+        npwp_document_url: formData.npwp_document_url || "/files/npwp.pdf",
         phone: formData.phone,
         registration_status: "pending_approval",
-        sk_document_url: formData.sk_document_url,
+        sk_document_url: formData.sk_document_url || "/files/sk_pendirian.pdf",
       };
 
-      const response = await fetch("/api/v1/puskesmas/register", {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const response = await fetch(`${apiBaseUrl}/api/v1/puskesmas/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,15 +104,19 @@ export default function PuskesmasRegistrationPage() {
         body: JSON.stringify(requestBody),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        console.log("Registration successful!");
-        alert("Registrasi berhasil! Data Anda akan diverifikasi.");
+        // Registrasi berhasil - redirect ke halaman login
+        router.push("/login?registered=true");
       } else {
-        throw new Error("Registration failed");
+        // Handle error response
+        const errorMsg = data?.message || data?.error || "Registrasi gagal. Silakan coba lagi.";
+        setErrorMessage(errorMsg);
       }
     } catch (error) {
       console.error("Registration error:", error);
-      alert("Terjadi kesalahan. Silakan coba lagi.");
+      setErrorMessage("Terjadi kesalahan koneksi. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -358,6 +368,21 @@ export default function PuskesmasRegistrationPage() {
                 WIB
               </p>
             </div>
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                <p className="text-sm text-red-800">{errorMessage}</p>
+              </div>
+            )}
+
+            {/* Info tentang proses verifikasi */}
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Catatan:</strong> Setelah registrasi, akun Anda akan direview oleh Super Admin. 
+                Proses verifikasi biasanya memakan waktu 1-3 hari kerja.
+              </p>
+            </div>
           </div>
         );
 
@@ -463,15 +488,23 @@ export default function PuskesmasRegistrationPage() {
                 <Button
                   variant="outline"
                   className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  disabled={isLoading}
                 >
                   Simpan sebagai Draft
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={!formData.data_truth_confirmed || isLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 min-w-[180px]"
                 >
-                  {isLoading ? "Memproses..." : "Kirim untuk Verifikasi"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    "Kirim untuk Verifikasi"
+                  )}
                 </Button>
               </div>
             )}

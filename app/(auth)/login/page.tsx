@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Mail, Lock, Loader2, Shield, Building2, Stethoscope } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Loader2, Shield, Building2, Stethoscope, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,11 +40,20 @@ const LOGIN_TABS = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
   const [activeTab, setActiveTab] = useState<LoginTab>('puskesmas');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Check if redirected from successful registration
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setSuccessMessage('Registrasi berhasil! Akun Anda akan direview oleh Super Admin dalam 1-3 hari kerja.');
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -238,6 +247,17 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
+
+          {/* Success Message (after registration) */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-green-800 font-medium">Registrasi Berhasil!</p>
+                <p className="text-sm text-green-700 mt-1">{successMessage}</p>
+              </div>
+            </div>
+          )}
 
           {errorMessage && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
