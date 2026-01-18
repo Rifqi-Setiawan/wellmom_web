@@ -28,6 +28,18 @@ export const ROUTES = {
   // Puskesmas routes
   PUSKESMAS: {
     DASHBOARD: '/puskesmas/dashboard',
+    TENAGA_KESEHATAN: {
+      LIST: '/puskesmas/tenaga-kesehatan',
+      ADD: '/puskesmas/tenaga-kesehatan/tambah',
+      DETAIL: (id: string | number) => `/puskesmas/tenaga-kesehatan/${id}`,
+      EDIT: (id: string | number) => `/puskesmas/tenaga-kesehatan/${id}/edit`,
+    },
+    PASIEN: {
+      LIST: '/puskesmas/pasien',
+      ADD: '/puskesmas/pasien/tambah',
+      DETAIL: (id: string | number) => `/puskesmas/pasien/${id}`,
+      EDIT: (id: string | number) => `/puskesmas/pasien/${id}/edit`,
+    },
     PERAWAT: {
       LIST: '/puskesmas/perawat',
       ADD: '/puskesmas/perawat/tambah',
