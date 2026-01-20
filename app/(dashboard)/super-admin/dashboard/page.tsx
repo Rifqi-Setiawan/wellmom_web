@@ -24,17 +24,18 @@ import {
   XCircle,
 } from 'lucide-react';
 import RejectModal from '@/components/modals/reject-modal';
+import ApproveModal from '@/components/modals/approve-modal';
+import DeactivateModal from '@/components/modals/deactivate-modal';
 
-type TabType = 'active' | 'pending';
+type TabType = 'all' | 'pending' | 'approved' | 'rejected' | 'draft';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const { user, token, isAuthenticated } = useAuthStore();
   const [statistics, setStatistics] = useState<PlatformStatistics | null>(null);
-  const [activePuskesmas, setActivePuskesmas] = useState<Puskesmas[]>([]);
-  const [pendingPuskesmas, setPendingPuskesmas] = useState<Puskesmas[]>([]);
+  const [allPuskesmas, setAllPuskesmas] = useState<Puskesmas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('active');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -50,8 +51,10 @@ export default function SuperAdminDashboard() {
     minHealthWorkers: '',
   });
 
-  // Approve/Reject states
+  // Approve/Reject/Deactivate states
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [selectedPuskesmas, setSelectedPuskesmas] = useState<Puskesmas | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -61,7 +64,23 @@ export default function SuperAdminDashboard() {
       return;
     }
 
-    fetchAllData();
+    // Fetch initial data with 'all' filter
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      try {
+        const stats = await statisticsApi.getPlatformStatistics(token);
+        setStatistics(stats);
+        
+        const data = await puskesmasApi.getAllPuskesmas(token, { skip: 0, limit: 1000 });
+        setAllPuskesmas(data);
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
     fetchProvinces();
   }, [isAuthenticated, token, user, router]);
 
@@ -76,21 +95,51 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleApprove = async (puskesmasId: number, e: React.MouseEvent) => {
+  const handleApproveClick = (puskesmas: Puskesmas, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent row click
-    
-    if (!token) return;
+    setSelectedPuskesmas(puskesmas);
+    setIsApproveModalOpen(true);
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!token || !selectedPuskesmas) return;
     
     setIsProcessing(true);
     try {
-      await puskesmasApi.approvePuskesmas(token, puskesmasId);
+      await puskesmasApi.approvePuskesmas(token, selectedPuskesmas.id);
       // Refresh data
       await fetchAllData();
-      // Show success message (you can add toast notification here)
+      setIsApproveModalOpen(false);
+      setSelectedPuskesmas(null);
       alert('Puskesmas berhasil diapprove!');
     } catch (error) {
       console.error('Failed to approve puskesmas:', error);
-      alert('Gagal approve puskesmas. Silakan coba lagi.');
+      alert(error instanceof Error ? error.message : 'Gagal approve puskesmas. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeactivateClick = (puskesmas: Puskesmas, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setSelectedPuskesmas(puskesmas);
+    setIsDeactivateModalOpen(true);
+  };
+
+  const handleDeactivateConfirm = async (reason: string) => {
+    if (!token || !selectedPuskesmas) return;
+    
+    setIsProcessing(true);
+    try {
+      await puskesmasApi.deactivatePuskesmas(token, selectedPuskesmas.id, reason);
+      // Refresh data
+      await fetchAllData();
+      setIsDeactivateModalOpen(false);
+      setSelectedPuskesmas(null);
+      alert('Puskesmas berhasil dinonaktifkan!');
+    } catch (error) {
+      console.error('Failed to deactivate puskesmas:', error);
+      alert(error instanceof Error ? error.message : 'Gagal menonaktifkan puskesmas. Silakan coba lagi.');
     } finally {
       setIsProcessing(false);
     }
@@ -113,10 +162,10 @@ export default function SuperAdminDashboard() {
       setIsRejectModalOpen(false);
       setSelectedPuskesmas(null);
       // Show success message
-      alert('Puskesmas berhasil direject!');
+      alert('Puskesmas berhasil ditolak!');
     } catch (error) {
       console.error('Failed to reject puskesmas:', error);
-      alert('Gagal reject puskesmas. Silakan coba lagi.');
+      alert(error instanceof Error ? error.message : 'Gagal menolak puskesmas. Silakan coba lagi.');
     } finally {
       setIsProcessing(false);
     }
@@ -133,17 +182,16 @@ export default function SuperAdminDashboard() {
       console.log('✅ Statistics received:', stats);
       setStatistics(stats);
 
-      // Fetch active puskesmas from backend
-      console.log('🔄 Fetching active puskesmas...');
-      const activeData = await puskesmasApi.getActivePuskesmas(token);
-      console.log('✅ Active puskesmas received:', activeData.length, 'items');
-      setActivePuskesmas(activeData);
-
-      // Fetch pending puskesmas from backend
-      console.log('🔄 Fetching pending puskesmas...');
-      const pendingData = await puskesmasApi.getPendingPuskesmas(token);
-      console.log('✅ Pending puskesmas received:', pendingData.length, 'items');
-      setPendingPuskesmas(pendingData);
+      // Fetch all puskesmas from backend with current filter
+      console.log('🔄 Fetching all puskesmas...');
+      const statusFilter = activeTab === 'all' ? undefined : activeTab === 'pending' ? 'pending_approval' : activeTab;
+      const allData = await puskesmasApi.getAllPuskesmas(token, {
+        skip: 0,
+        limit: 1000,
+        status_filter: statusFilter as any,
+      });
+      console.log('✅ All puskesmas received:', allData.length, 'items');
+      setAllPuskesmas(allData);
     } catch (error) {
       console.error('❌ Failed to fetch data:', error);
       // Set empty data on error instead of dummy data
@@ -161,18 +209,14 @@ export default function SuperAdminDashboard() {
         total_ibu_hamil_risk_normal: 0,
         total_ibu_hamil_risk_high: 0,
       });
-      setActivePuskesmas([]);
-      setPendingPuskesmas([]);
+      setAllPuskesmas([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get current list based on active tab
-  const currentList = activeTab === 'active' ? activePuskesmas : pendingPuskesmas;
-
   // Apply all filters
-  const filteredPuskesmas = currentList.filter((p) => {
+  const filteredPuskesmas = allPuskesmas.filter((p) => {
     // Search filter
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -324,39 +368,152 @@ export default function SuperAdminDashboard() {
       <div className="bg-white rounded-xl border border-gray-200">
         {/* Tabs */}
         <div className="border-b border-gray-200 px-6">
-          <div className="flex gap-6">
+          <div className="flex gap-6 overflow-x-auto">
             <button
-              onClick={() => {
-                setActiveTab('active');
+              onClick={async () => {
+                setActiveTab('all');
                 setCurrentPage(1);
                 setSearchQuery('');
+                if (token) {
+                  setIsLoading(true);
+                  try {
+                    const data = await puskesmasApi.getAllPuskesmas(token, { skip: 0, limit: 1000 });
+                    setAllPuskesmas(data);
+                  } catch (error) {
+                    console.error('Failed to fetch all puskesmas:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
               }}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'active'
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                activeTab === 'all'
                   ? 'border-[#3B9ECF] text-[#3B9ECF]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              Active Puskesmas
+              Semua
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 setActiveTab('pending');
                 setCurrentPage(1);
                 setSearchQuery('');
+                if (token) {
+                  setIsLoading(true);
+                  try {
+                    const data = await puskesmasApi.getAllPuskesmas(token, { 
+                      skip: 0, 
+                      limit: 1000,
+                      status_filter: 'pending_approval',
+                    });
+                    setAllPuskesmas(data);
+                  } catch (error) {
+                    console.error('Failed to fetch pending puskesmas:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
               }}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'pending'
                   ? 'border-[#3B9ECF] text-[#3B9ECF]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              Pending Requests
+              Menunggu Persetujuan
               {(statistics?.total_puskesmas_pending || 0) > 0 && (
                 <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
                   {statistics?.total_puskesmas_pending || 0}
                 </span>
               )}
+            </button>
+            <button
+              onClick={async () => {
+                setActiveTab('approved');
+                setCurrentPage(1);
+                setSearchQuery('');
+                if (token) {
+                  setIsLoading(true);
+                  try {
+                    const data = await puskesmasApi.getAllPuskesmas(token, { 
+                      skip: 0, 
+                      limit: 1000,
+                      status_filter: 'approved',
+                    });
+                    setAllPuskesmas(data);
+                  } catch (error) {
+                    console.error('Failed to fetch approved puskesmas:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
+              }}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                activeTab === 'approved'
+                  ? 'border-[#3B9ECF] text-[#3B9ECF]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Disetujui
+            </button>
+            <button
+              onClick={async () => {
+                setActiveTab('rejected');
+                setCurrentPage(1);
+                setSearchQuery('');
+                if (token) {
+                  setIsLoading(true);
+                  try {
+                    const data = await puskesmasApi.getAllPuskesmas(token, { 
+                      skip: 0, 
+                      limit: 1000,
+                      status_filter: 'rejected',
+                    });
+                    setAllPuskesmas(data);
+                  } catch (error) {
+                    console.error('Failed to fetch rejected puskesmas:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
+              }}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                activeTab === 'rejected'
+                  ? 'border-[#3B9ECF] text-[#3B9ECF]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Ditolak
+            </button>
+            <button
+              onClick={async () => {
+                setActiveTab('draft');
+                setCurrentPage(1);
+                setSearchQuery('');
+                if (token) {
+                  setIsLoading(true);
+                  try {
+                    const data = await puskesmasApi.getAllPuskesmas(token, { 
+                      skip: 0, 
+                      limit: 1000,
+                      status_filter: 'draft',
+                    });
+                    setAllPuskesmas(data);
+                  } catch (error) {
+                    console.error('Failed to fetch draft puskesmas:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
+              }}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                activeTab === 'draft'
+                  ? 'border-[#3B9ECF] text-[#3B9ECF]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Draft
             </button>
           </div>
         </div>
@@ -475,9 +632,15 @@ export default function SuperAdminDashboard() {
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     {searchQuery
                       ? 'Tidak ada puskesmas yang cocok dengan pencarian'
-                      : activeTab === 'active'
-                      ? 'Tidak ada puskesmas aktif'
-                      : 'Tidak ada pendaftaran pending'}
+                      : activeTab === 'pending'
+                      ? 'Tidak ada pendaftaran pending'
+                      : activeTab === 'approved'
+                      ? 'Tidak ada puskesmas yang disetujui'
+                      : activeTab === 'rejected'
+                      ? 'Tidak ada puskesmas yang ditolak'
+                      : activeTab === 'draft'
+                      ? 'Tidak ada draft puskesmas'
+                      : 'Tidak ada data puskesmas'}
                   </td>
                 </tr>
               ) : (
@@ -520,24 +683,45 @@ export default function SuperAdminDashboard() {
                       </p>
                     </td>
                     <td className="px-6 py-4">
-                      {activeTab === 'active' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
-                          ACTIVE
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span>
-                          PENDING
-                        </span>
-                      )}
+                      {(() => {
+                        const status = puskesmas.registration_status;
+                        if (status === 'pending_approval') {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span>
+                              Menunggu Persetujuan
+                            </span>
+                          );
+                        } else if (status === 'approved') {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
+                              Disetujui
+                            </span>
+                          );
+                        } else if (status === 'rejected') {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                              Ditolak
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
+                              Draft
+                            </span>
+                          );
+                        }
+                      })()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {activeTab === 'pending' ? (
+                        {puskesmas.registration_status === 'pending_approval' ? (
                           <>
                             <button
-                              onClick={(e) => handleApprove(puskesmas.id, e)}
+                              onClick={(e) => handleApproveClick(puskesmas, e)}
                               disabled={isProcessing}
                               className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                             >
@@ -551,6 +735,26 @@ export default function SuperAdminDashboard() {
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               Reject
+                            </button>
+                          </>
+                        ) : puskesmas.registration_status === 'approved' && puskesmas.is_active ? (
+                          <>
+                            <button
+                              onClick={(e) => handleDeactivateClick(puskesmas, e)}
+                              disabled={isProcessing}
+                              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              Nonaktifkan
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/super-admin/puskesmas/${puskesmas.id}`);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <ChevronRight className="w-5 h-5" />
                             </button>
                           </>
                         ) : (
@@ -672,6 +876,34 @@ export default function SuperAdminDashboard() {
           onConfirm={handleRejectConfirm}
           puskesmasName={selectedPuskesmas.name}
           isLoading={isProcessing}
+        />
+      )}
+
+      {/* Approve Modal */}
+      {selectedPuskesmas && (
+        <ApproveModal
+          isOpen={isApproveModalOpen}
+          onClose={() => {
+            setIsApproveModalOpen(false);
+            setSelectedPuskesmas(null);
+          }}
+          onApprove={handleApproveConfirm}
+          puskesmasName={selectedPuskesmas.name}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {/* Deactivate Modal */}
+      {selectedPuskesmas && (
+        <DeactivateModal
+          isOpen={isDeactivateModalOpen}
+          onClose={() => {
+            setIsDeactivateModalOpen(false);
+            setSelectedPuskesmas(null);
+          }}
+          onDeactivate={handleDeactivateConfirm}
+          puskesmasName={selectedPuskesmas.name}
+          isProcessing={isProcessing}
         />
       )}
     </div>

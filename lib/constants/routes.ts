@@ -9,6 +9,11 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
+  
+  // Puskesmas registration status pages
+  WAITING_APPROVAL: '/waiting-approval',
+  REGISTRATION_REJECTED: '/registration-rejected',
+  COMPLETE_REGISTRATION: '/complete-registration',
 
   // Super Admin routes
   SUPER_ADMIN: {

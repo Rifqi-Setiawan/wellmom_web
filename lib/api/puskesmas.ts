@@ -47,16 +47,33 @@ export const puskesmasApi = {
     return response.data;
   },
 
-  // Get all puskesmas (for overview - newest registrations first)
-  getAllPuskesmas: async (token: string, limit: number = 100): Promise<Puskesmas[]> => {
+  // Get all puskesmas with filters
+  getAllPuskesmas: async (
+    token: string,
+    params?: {
+      skip?: number;
+      limit?: number;
+      status_filter?: 'pending_approval' | 'approved' | 'rejected' | 'draft';
+    }
+  ): Promise<Puskesmas[]> => {
+    console.log('🏥 API Request: GET /api/v1/puskesmas/admin/all');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    console.log('📋 Query params:', params);
+    
     const response = await api.get<Puskesmas[]>('/api/v1/puskesmas/admin/all', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       params: {
-        limit,
+        skip: params?.skip || 0,
+        limit: params?.limit || 100,
+        status_filter: params?.status_filter || undefined,
       },
     });
+    
+    console.log('🏥 API Response Status:', response.status);
+    console.log('🏥 Puskesmas Count:', response.data.length);
+    
     return response.data;
   },
 
@@ -79,14 +96,18 @@ export const puskesmasApi = {
 
   // Approve puskesmas registration
   approvePuskesmas: async (token: string, id: number): Promise<Puskesmas> => {
-    console.log(`✅ API Request: PUT /api/v1/puskesmas/${id} (Approve)`);
+    console.log(`✅ API Request: POST /api/v1/puskesmas/${id}/approve`);
     console.log('🔑 Using token:', token.substring(0, 20) + '...');
     
-    const response = await api.put<Puskesmas>(`/api/v1/puskesmas/${id}`, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post<Puskesmas>(
+      `/api/v1/puskesmas/${id}/approve`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     
     console.log('✅ API Response Status:', response.status);
     console.log('✅ Puskesmas Approved:', response.data);
@@ -95,12 +116,12 @@ export const puskesmasApi = {
   },
 
   // Reject puskesmas registration
-  rejectPuskesmas: async (token: string, id: number, rejectionReason: string): Promise<void> => {
+  rejectPuskesmas: async (token: string, id: number, rejectionReason: string): Promise<Puskesmas> => {
     console.log(`❌ API Request: POST /api/v1/puskesmas/${id}/reject`);
     console.log('🔑 Using token:', token.substring(0, 20) + '...');
     console.log('📝 Rejection Reason:', rejectionReason);
     
-    const response = await api.post(
+    const response = await api.post<Puskesmas>(
       `/api/v1/puskesmas/${id}/reject`,
       {
         rejection_reason: rejectionReason,
@@ -113,6 +134,32 @@ export const puskesmasApi = {
     );
     
     console.log('❌ API Response Status:', response.status);
-    console.log('❌ Puskesmas Rejected');
+    console.log('❌ Puskesmas Rejected:', response.data);
+    
+    return response.data;
+  },
+
+  // Deactivate puskesmas
+  deactivatePuskesmas: async (token: string, id: number, reason: string): Promise<Puskesmas> => {
+    console.log(`⚠️ API Request: POST /api/v1/puskesmas/${id}/deactivate`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    console.log('📝 Deactivation Reason:', reason);
+    
+    const response = await api.post<Puskesmas>(
+      `/api/v1/puskesmas/${id}/deactivate`,
+      {
+        reason,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    console.log('⚠️ API Response Status:', response.status);
+    console.log('⚠️ Puskesmas Deactivated:', response.data);
+    
+    return response.data;
   },
 };

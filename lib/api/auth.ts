@@ -37,19 +37,39 @@ export const authApi = {
     return response.data;
   },
 
-  // Login Puskesmas
+  // Login Puskesmas (menggunakan phone, bukan email)
   loginPuskesmas: async (data: LoginRequest): Promise<PuskesmasLoginResponse> => {
-    const response = await api.post<PuskesmasLoginResponse>(
-      '/api/v1/auth/login/puskesmas',
-      data
-    );
-    return response.data;
+    try {
+      // Puskesmas now uses email login
+      const response = await api.post<PuskesmasLoginResponse>(
+        '/api/v1/auth/login/puskesmas',
+        {
+          email: data.email,
+          password: data.password,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      // Re-throw error dengan status code dan detail untuk handling di frontend
+      if (axios.isAxiosError(error)) {
+        // Preserve original error dengan status dan detail
+        const customError = new Error(
+          error.response?.data?.detail || 
+          error.response?.data?.message || 
+          error.message
+        ) as Error & { status?: number; detail?: string };
+        customError.status = error.response?.status;
+        customError.detail = error.response?.data?.detail || error.response?.data?.message;
+        throw customError;
+      }
+      throw error;
+    }
   },
 
   // Login Perawat
   loginPerawat: async (data: LoginRequest): Promise<PerawatLoginResponse> => {
     const response = await api.post<PerawatLoginResponse>(
-      '/api/v1/perawat/generate',
+      '/api/v1/perawat/login',
       data
     );
     return response.data;
@@ -62,6 +82,7 @@ export const authApi = {
         case 'super_admin':
           return await authApi.loginSuperAdmin(data);
         case 'puskesmas':
+          // Untuk puskesmas, langsung return error dengan status code untuk handling di frontend
           return await authApi.loginPuskesmas(data);
         case 'perawat':
           return await authApi.loginPerawat(data);
@@ -70,6 +91,11 @@ export const authApi = {
       }
     } catch (error) {
       console.error('Login API Error:', error);
+      
+      // Untuk puskesmas, pass through error dengan status code (sudah di-handle di loginPuskesmas)
+      if (error instanceof Error && 'status' in error) {
+        throw error;
+      }
       
       if (axios.isAxiosError(error)) {
         // Network error (no response received)
@@ -132,7 +158,7 @@ export const authApi = {
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     try {
       const response = await api.post<RegisterResponse>(
-        '/api/v1/auth/register/puskesmas',
+        '/api/v1/puskesmas/register',
         data
       );
       return response.data;
@@ -160,6 +186,24 @@ export const authApi = {
       );
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  },
+
+  // Logout Puskesmas
+  logoutPuskesmas: async (token: string): Promise<void> => {
+    try {
+      await api.post(
+        '/api/v1/auth/logout/puskesmas',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Puskesmas Logout error:', error);
+      // We continue even if API fails to clear local state
     }
   },
 };

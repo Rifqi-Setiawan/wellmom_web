@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { authApi } from '@/lib/api/auth';
 import Link from 'next/link';
 import {
   LayoutDashboard,
@@ -11,10 +12,12 @@ import {
   LogOut,
 } from 'lucide-react';
 
-export default function PuskesmasLayout({ children }: { children: React.ReactNode }) {
+
+
+  export default function PuskesmasLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, token, isAuthenticated, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,9 +28,17 @@ export default function PuskesmasLayout({ children }: { children: React.ReactNod
     setIsLoading(false);
   }, [isAuthenticated, user, router]);
 
-  const handleLogout = () => {
-    clearAuth();
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      if (token) {
+        await authApi.logoutPuskesmas(token);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      clearAuth();
+      router.push('/login');
+    }
   };
 
   if (isLoading) {
@@ -45,13 +56,13 @@ export default function PuskesmasLayout({ children }: { children: React.ReactNod
       icon: LayoutDashboard,
     },
     {
-      name: 'Manajemen Tenaga Kesehatan',
-      href: '/puskesmas/tenaga-kesehatan',
+      name: 'Kelola Perawat',
+      href: '/puskesmas/dashboard/perawat',
       icon: UserCheck,
     },
     {
-      name: 'Manajemen Pasien',
-      href: '/puskesmas/pasien',
+      name: 'Kelola Ibu Hamil',
+      href: '/puskesmas/dashboard/ibu-hamil',
       icon: Users,
     },
   ];
@@ -100,7 +111,7 @@ export default function PuskesmasLayout({ children }: { children: React.ReactNod
 
         {/* User Profile */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
               <span className="text-sm font-medium text-white">
                 {user?.full_name
@@ -116,14 +127,15 @@ export default function PuskesmasLayout({ children }: { children: React.ReactNod
               </p>
               <p className="text-xs text-gray-500">Kementerian Kesehatan</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
+          
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+             <LogOut className="w-5 h-5" />
+             <span className="text-sm font-medium">Keluar</span>
+          </button>
         </div>
       </aside>
 
