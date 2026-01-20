@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Puskesmas } from '@/lib/types/puskesmas';
+import type { IbuHamil, PuskesmasStatistics } from '@/lib/types/ibu-hamil';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://103.191.92.29:8000';
 
@@ -159,6 +160,40 @@ export const puskesmasApi = {
     
     console.log('⚠️ API Response Status:', response.status);
     console.log('⚠️ Puskesmas Deactivated:', response.data);
+    
+    return response.data;
+  },
+
+  // Get puskesmas statistics (for puskesmas dashboard)
+  getPuskesmasStatistics: async (token: string): Promise<PuskesmasStatistics> => {
+    console.log('📊 API Request: GET /api/v1/puskesmas/me/statistics');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.get<PuskesmasStatistics>('/api/v1/puskesmas/me/statistics', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('📊 API Response Status:', response.status);
+    console.log('📊 Statistics:', response.data);
+    
+    return response.data;
+  },
+
+  // Get ibu hamil list for puskesmas
+  getIbuHamilList: async (token: string): Promise<IbuHamil[]> => {
+    console.log('👶 API Request: GET /api/v1/puskesmas/me/ibu-hamil');
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.get<IbuHamil[]>('/api/v1/puskesmas/me/ibu-hamil', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('👶 API Response Status:', response.status);
+    console.log('👶 Ibu Hamil Count:', response.data.length);
     
     return response.data;
   },

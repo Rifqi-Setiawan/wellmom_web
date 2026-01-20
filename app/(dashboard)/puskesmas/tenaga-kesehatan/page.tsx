@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { HealthPersonnel } from '@/lib/types/health-personnel';
+import { AddNurseModal } from '@/components/add-nurse-modal';
 import {
   Search,
   Plus,
@@ -74,6 +75,7 @@ export default function TenagaKesehatanPage() {
   const [healthPersonnel] = useState<HealthPersonnel[]>(dummyHealthPersonnel);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isAddNurseOpen, setIsAddNurseOpen] = useState(false);
   const itemsPerPage = 3;
 
   // Filter berdasarkan search
@@ -123,11 +125,23 @@ export default function TenagaKesehatanPage() {
             Kelola data profesional medis dan distribusi beban kerja puskesmas.
           </p>
         </div>
-        <button className="px-4 py-2 bg-[#3B9ECF] text-white rounded-lg hover:bg-[#2d7ba8] transition-colors flex items-center gap-2">
+        <button 
+          onClick={() => setIsAddNurseOpen(true)}
+          className="px-4 py-2 bg-[#3B9ECF] text-white rounded-lg hover:bg-[#2d7ba8] transition-colors flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Tambah Nakes
         </button>
       </div>
+
+      <AddNurseModal 
+        isOpen={isAddNurseOpen} 
+        onClose={() => setIsAddNurseOpen(false)}
+        onSuccess={() => {
+          // Optional: Refresh data list here
+          console.log('Nurse added via API');
+        }}
+      />
 
       {/* Search and Filter */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">

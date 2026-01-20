@@ -36,6 +36,13 @@ export const useAuthStore = create<AuthState>()(
           role: response.role,
         };
 
+        console.log('🔐 Setting auth state:', {
+          role: response.role,
+          userId: response.user.id,
+          hasToken: !!response.access_token,
+          puskesmasInfo: 'puskesmas' in response ? response.puskesmas : null,
+        });
+
         set({
           user: authUser,
           token: response.access_token,
@@ -43,6 +50,8 @@ export const useAuthStore = create<AuthState>()(
           perawatInfo: 'perawat' in response ? response.perawat : null,
           isAuthenticated: true,
         });
+
+        console.log('✅ Auth state set successfully');
       },
       clearAuth: () =>
         set({

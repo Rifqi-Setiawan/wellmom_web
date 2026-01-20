@@ -121,19 +121,12 @@ export default function LoginPage() {
 
       console.log("🚀 Redirecting to:", dashboardRoute);
 
-      // Use window.location instead of router.push for more reliable redirect
-      await router.push(dashboardRoute);
+      // Wait a bit to ensure Zustand persist has written to localStorage
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log("✅ Router.push completed");
-
-      // Force reload to ensure state is persisted
-      setTimeout(() => {
-        console.log("🔄 Checking if navigation happened...");
-        if (window.location.pathname === "/login") {
-          console.warn("⚠️ Still on login page, forcing navigation...");
-          window.location.href = dashboardRoute;
-        }
-      }, 500);
+      // Use window.location.href for full page reload to ensure auth state is loaded
+      // This is more reliable than router.push for auth redirects
+      window.location.href = dashboardRoute;
     } catch (error) {
       console.error("❌ Login error:", error);
       

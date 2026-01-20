@@ -16,7 +16,7 @@ import type { NurseGenerationResponse } from "@/lib/types/nurse";
 
 const nurseFormSchema = z.object({
   nama_lengkap: z.string().min(1, "Nama lengkap harus diisi").min(3, "Nama lengkap minimal 3 karakter"),
-  nomor_telepon: z.string().min(1, "Nomor telepon harus diisi").regex(/^(\+62|62|0)[0-9]{9,12}$/, "Format nomor telepon tidak valid"),
+  nomor_hp: z.string().min(1, "Nomor telepon harus diisi").regex(/^(\+62|62|0)[0-9]{9,12}$/, "Format nomor telepon tidak valid"),
   email: z.string().email("Format email tidak valid"),
   nip: z.string().min(5, "NIP minimal 5 karakter"),
 });
@@ -48,7 +48,20 @@ export default function AddNursePage() {
       setSuccessData(result);
     } catch (err: any) {
       console.error("Error generating nurse:", err);
-      setError(err.response?.data?.message || err.message || "Gagal membuat akun perawat.");
+      let errorMsg = "Gagal membuat akun perawat.";
+      
+      const responseData = err.response?.data;
+      if (responseData) {
+        if (typeof responseData.detail === 'string') {
+          errorMsg = responseData.detail;
+        } else if (Array.isArray(responseData.detail)) {
+          errorMsg = responseData.detail.map((e: any) => e.msg).join(', ');
+        } else if (responseData.message) {
+          errorMsg = responseData.message;
+        }
+      }
+      
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -139,19 +152,19 @@ export default function AddNursePage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="nomor_telepon">Nomor Telepon</Label>
+            <Label htmlFor="nomor_hp">Nomor HP</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
-                id="nomor_telepon"
+                id="nomor_hp"
                 type="tel"
                 placeholder="+6281234567890 atau 081234567890"
                 className="pl-10"
-                {...register("nomor_telepon")}
+                {...register("nomor_hp")}
               />
             </div>
-            {errors.nomor_telepon && (
-              <p className="text-sm text-red-500">{errors.nomor_telepon.message}</p>
+            {errors.nomor_hp && (
+              <p className="text-sm text-red-500">{errors.nomor_hp.message}</p>
             )}
             <p className="text-xs text-gray-500">
               Format: +62, 62, atau 0 diikuti 9-12 digit angka.

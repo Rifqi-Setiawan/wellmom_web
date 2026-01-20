@@ -19,14 +19,48 @@ import {
   const pathname = usePathname();
   const { user, token, isAuthenticated, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Wait for Zustand to hydrate from localStorage
+  useEffect(() => {
+    console.log('🔄 Puskesmas Layout: Waiting for hydration...');
+    setIsHydrated(true);
+    console.log('✅ Puskesmas Layout: Hydrated');
+  }, []);
 
   useEffect(() => {
+    console.log('🔍 Puskesmas Layout: Auth check', {
+      isHydrated,
+      isAuthenticated,
+      hasUser: !!user,
+      userRole: user?.role,
+      hasToken: !!token,
+    });
+
+    // Don't check auth until Zustand has hydrated
+    if (!isHydrated) {
+      console.log('⏳ Puskesmas Layout: Waiting for hydration...');
+      return;
+    }
+
+    // Check authentication after hydration
     if (!isAuthenticated || !user || user.role !== 'puskesmas') {
+      console.log('🚫 Puskesmas Layout: Auth check failed, redirecting to login');
+      console.log('   Details:', {
+        isAuthenticated,
+        hasUser: !!user,
+        userRole: user?.role,
+        expectedRole: 'puskesmas',
+        hasToken: !!token,
+      });
       router.push('/login');
       return;
     }
+
+    console.log('✅ Puskesmas Layout: Auth check passed');
+    console.log('   User:', { role: user.role, email: user.email, id: user.id });
     setIsLoading(false);
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, token, router, isHydrated]);
 
   const handleLogout = async () => {
     try {

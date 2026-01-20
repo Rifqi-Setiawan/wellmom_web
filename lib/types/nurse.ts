@@ -2,7 +2,7 @@ export interface NurseGenerationRequest {
   email: string;
   nip: string;
   nama_lengkap: string;
-  nomor_telepon: string;
+  nomor_hp: string;
 }
 
 export interface NurseGenerationResponse {
@@ -25,8 +25,12 @@ export interface NurseListItem {
   nama_lengkap: string;
   email: string;
   nip: string;
+  nomor_hp: string;
   is_active: boolean;
-  activation_status: {
+  current_patients: number;
+  created_at: string;
+  updated_at: string;
+  activation_status?: {
     is_verified: boolean;
     is_user_active: boolean;
     has_pending_token: boolean;

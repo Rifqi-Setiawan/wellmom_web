@@ -12,33 +12,49 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { nurseApi } from "@/lib/api/nurse";
+import { puskesmasApi } from "@/lib/api/puskesmas";
 import { Button } from "@/components/ui/button";
 import { PatientOverview } from "./_components/patient-overview";
+import type { PuskesmasStatistics } from "@/lib/types/ibu-hamil";
 
 export default function PuskesmasDashboard() {
-  const { user, token } = useAuthStore();
-  const [nurseCount, setNurseCount] = useState(0);
+  const { user, token, puskesmasInfo } = useAuthStore();
+  const [statistics, setStatistics] = useState<PuskesmasStatistics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch nurse count for dashboard
-    const fetchStats = async () => {
-      if (token) {
-        try {
-          const data = await nurseApi.getNurses(token);
-          setNurseCount(data.total_perawat);
-        } catch (error) {
-          console.error("Failed to fetch dashboard stats", error);
-        }
+    const fetchDashboardData = async () => {
+      if (!token) return;
+      
+      setIsLoading(true);
+      try {
+        const stats = await puskesmasApi.getPuskesmasStatistics(token);
+        setStatistics(stats);
+      } catch (error) {
+        console.error("Failed to fetch dashboard statistics", error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchStats();
+    
+    fetchDashboardData();
   }, [token]);
+
+  if (isLoading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3B9ECF]"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Selamat Datang, Puskesmas {user?.full_name || user?.email}
+          Selamat Datang, {statistics?.puskesmas_name || puskesmasInfo?.name || user?.full_name || user?.email}
         </h1>
         <p className="text-gray-600">
           Ringkasan aktivitas dan status operasional hari ini.
@@ -57,7 +73,9 @@ export default function PuskesmasDashboard() {
               Aktif
             </span>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">{nurseCount}</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+            {statistics?.total_perawat || 0}
+          </h3>
           <p className="text-sm text-gray-500 mb-4">Total Perawat</p>
           <Link 
             href="/puskesmas/dashboard/perawat" 
@@ -67,17 +85,16 @@ export default function PuskesmasDashboard() {
           </Link>
         </div>
 
-        {/* Card 2: Ibu Hamil (Dummy) */}
+        {/* Card 2: Ibu Hamil */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-pink-100 text-pink-600 rounded-lg">
               <Baby className="w-6 h-6" />
             </div>
-            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-              +5%
-            </span>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">128</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+            {statistics?.total_ibu_hamil || 0}
+          </h3>
           <p className="text-sm text-gray-500 mb-4">Total Ibu Hamil</p>
           <Link 
             href="/puskesmas/dashboard/ibu-hamil" 
@@ -87,34 +104,47 @@ export default function PuskesmasDashboard() {
           </Link>
         </div>
 
-        {/* Card 3: Pemeriksaan (Dummy) */}
+        {/* Card 3: Pemeriksaan Hari Ini */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
               <Activity className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">24</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+            {statistics?.pemeriksaan_hari_ini || 0}
+          </h3>
           <p className="text-sm text-gray-500 mb-4">Pemeriksaan Hari Ini</p>
-          <span className="text-sm text-gray-400">Update: 10 menit lalu</span>
+          <span className="text-sm text-gray-400">Update: Hari ini</span>
         </div>
 
         {/* Card 4: Pasien Belum Ditugaskan */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-red-100 text-red-600 rounded-lg">
-              <UserCheck className="w-6 h-6" /> {/* Reusing UserCheck or similar, maybe AlertCircle would be better but keeping consistency for now */}
+              <UserCheck className="w-6 h-6" />
             </div>
+            {statistics && statistics.pasien_belum_ditugaskan > 0 && (
+              <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
+                {statistics.persentase_belum_ditugaskan}%
+              </span>
+            )}
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">13</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+            {statistics?.pasien_belum_ditugaskan || 0}
+          </h3>
           <p className="text-sm text-gray-500 mb-4">Pasien Belum Ditugaskan</p>
-          <span className="text-sm text-gray-400">Perlu tindakan segera</span>
+          <span className="text-sm text-gray-400">
+            {statistics && statistics.pasien_belum_ditugaskan > 0 
+              ? "Perlu tindakan segera" 
+              : "Semua pasien sudah ditugaskan"}
+          </span>
         </div>
       </div>
 
       {/* Patient Overview Section */}
       <div className="mb-8">
-        <PatientOverview />
+        <PatientOverview statistics={statistics} />
       </div>
 
     </div>
