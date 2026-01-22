@@ -197,4 +197,21 @@ export const puskesmasApi = {
     
     return response.data;
   },
+
+  // Get ibu hamil by puskesmas_id
+  getIbuHamilByPuskesmas: async (token: string, puskesmasId: number): Promise<IbuHamil[]> => {
+    console.log(`👶 API Request: GET /api/v1/ibu-hamil/by-puskesmas/${puskesmasId}`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.get<IbuHamil[]>(`/api/v1/ibu-hamil/by-puskesmas/${puskesmasId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('👶 API Response Status:', response.status);
+    console.log('👶 Ibu Hamil Count:', response.data.length);
+    
+    return response.data;
+  },
 };

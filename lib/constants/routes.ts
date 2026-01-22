@@ -33,12 +33,6 @@ export const ROUTES = {
   // Puskesmas routes
   PUSKESMAS: {
     DASHBOARD: '/puskesmas/dashboard',
-    TENAGA_KESEHATAN: {
-      LIST: '/puskesmas/tenaga-kesehatan',
-      ADD: '/puskesmas/tenaga-kesehatan/tambah',
-      DETAIL: (id: string | number) => `/puskesmas/tenaga-kesehatan/${id}`,
-      EDIT: (id: string | number) => `/puskesmas/tenaga-kesehatan/${id}/edit`,
-    },
     PASIEN: {
       LIST: '/puskesmas/pasien',
       ADD: '/puskesmas/pasien/tambah',
@@ -46,10 +40,10 @@ export const ROUTES = {
       EDIT: (id: string | number) => `/puskesmas/pasien/${id}/edit`,
     },
     PERAWAT: {
-      LIST: '/puskesmas/perawat',
-      ADD: '/puskesmas/perawat/tambah',
-      DETAIL: (id: string | number) => `/puskesmas/perawat/${id}`,
-      EDIT: (id: string | number) => `/puskesmas/perawat/${id}/edit`,
+      LIST: '/puskesmas/dashboard/perawat',
+      ADD: '/puskesmas/dashboard/perawat/tambah',
+      DETAIL: (id: string | number) => `/puskesmas/dashboard/perawat/${id}`,
+      EDIT: (id: string | number) => `/puskesmas/dashboard/perawat/${id}/edit`,
     },
     IBU_HAMIL: {
       LIST: '/puskesmas/ibu-hamil',

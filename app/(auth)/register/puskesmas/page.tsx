@@ -538,15 +538,17 @@ export default function PuskesmasRegistrationPage() {
                 <Label htmlFor="latitude">Latitude</Label>
                 <Input
                   id="latitude"
-                  type="number"
-                  step="any"
-                  value={formData.latitude}
-                  onChange={(e) =>
-                    updateFormData("latitude", parseFloat(e.target.value) || 0)
-                  }
-                  placeholder="-2.0645"
-                  className="bg-gray-100"
-                  readOnly
+                  type="text"
+                  value={formData.latitude.toString().replace('.', ',')}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(',', '.');
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      updateFormData("latitude", numValue);
+                    }
+                  }}
+                  placeholder="-6,2088"
+                  className="bg-gray-50"
                 />
               </div>
 
@@ -554,15 +556,17 @@ export default function PuskesmasRegistrationPage() {
                 <Label htmlFor="longitude">Longitude</Label>
                 <Input
                   id="longitude"
-                  type="number"
-                  step="any"
-                  value={formData.longitude}
-                  onChange={(e) =>
-                    updateFormData("longitude", parseFloat(e.target.value) || 0)
-                  }
-                  placeholder="101.3912"
-                  className="bg-gray-100"
-                  readOnly
+                  type="text"
+                  value={formData.longitude.toString().replace('.', ',')}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(',', '.');
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      updateFormData("longitude", numValue);
+                    }
+                  }}
+                  placeholder="106,8456"
+                  className="bg-gray-50"
                 />
               </div>
             </div>

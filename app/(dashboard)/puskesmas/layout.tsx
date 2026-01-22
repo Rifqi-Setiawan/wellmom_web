@@ -95,7 +95,7 @@ import {
       icon: UserCheck,
     },
     {
-      name: 'Kelola Ibu Hamil',
+      name: 'Manajemen Pasien',
       href: '/puskesmas/dashboard/ibu-hamil',
       icon: Users,
     },

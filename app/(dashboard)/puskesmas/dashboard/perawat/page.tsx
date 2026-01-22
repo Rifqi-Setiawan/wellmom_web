@@ -1,21 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, UserCheck, Clock, RefreshCw, Mail } from "lucide-react";
+import { Plus, Search, UserCheck, Clock, RefreshCw, Mail, ArrowRightLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { nurseApi } from "@/lib/api/nurse";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { TransferPatientModal } from "@/components/transfer-patient-modal";
 import type { NurseListItem } from "@/lib/types/nurse";
 
 export default function NurseManagementPage() {
+  const router = useRouter();
   const { token } = useAuthStore();
   const [nurses, setNurses] = useState<NurseListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState({ active: 0, pending: 0, total: 0 });
   const [resendingId, setResendingId] = useState<number | null>(null);
+  
+  // Transfer modal state
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [selectedNurse, setSelectedNurse] = useState<NurseListItem | null>(null);
 
   const fetchNurses = async () => {
     if (!token) return;
@@ -37,6 +44,7 @@ export default function NurseManagementPage() {
 
   useEffect(() => {
     fetchNurses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleResendActivation = async (userId: number) => {
@@ -50,6 +58,44 @@ export default function NurseManagementPage() {
       alert("Gagal mengirim ulang email aktivasi.");
     } finally {
       setResendingId(null);
+    }
+  };
+
+  const handleDeleteNurse = async (nurseId: number, nurseName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Apakah Anda yakin ingin menghapus perawat ${nurseName}?`)) {
+      return;
+    }
+    
+    try {
+      if (!token) return;
+      await nurseApi.deleteNurse(token, nurseId);
+      await fetchNurses();
+      alert("Perawat berhasil dihapus.");
+    } catch (error) {
+      console.error("Failed to delete nurse:", error);
+      alert("Gagal menghapus perawat. Silakan coba lagi.");
+    }
+  };
+
+  const handleOpenTransferModal = (nurse: NurseListItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedNurse(nurse);
+    setIsTransferModalOpen(true);
+  };
+
+  const handleTransferAllPatients = async (sourceId: number, targetId: number) => {
+    if (!token) return;
+    try {
+      await nurseApi.transferPatients(token, sourceId, targetId);
+      await fetchNurses();
+      setIsTransferModalOpen(false);
+      setSelectedNurse(null);
+      alert("Semua pasien berhasil dipindahkan.");
+    } catch (error) {
+      console.error("Failed to transfer patients:", error);
+      alert("Gagal memindahkan pasien. Silakan coba lagi.");
+      throw error;
     }
   };
 
@@ -158,7 +204,11 @@ export default function NurseManagementPage() {
                 </tr>
               ) : (
                 filteredNurses.map((nurse) => (
-                  <tr key={nurse.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={nurse.id} 
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/puskesmas/dashboard/perawat/${nurse.id}`)}
+                  >
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{nurse.nama_lengkap}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{nurse.nip}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{nurse.email}</td>
@@ -173,25 +223,43 @@ export default function NurseManagementPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      {!nurse.is_active && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleResendActivation(nurse.user_id)}
-                          disabled={resendingId === nurse.user_id}
-                          className="text-[#3B9ECF] border-[#3B9ECF] hover:bg-blue-50"
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        {/* Transfer All Patients Button */}
+                        <button
+                          onClick={(e) => handleOpenTransferModal(nurse, e)}
+                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Pindahkan Semua Pasien"
+                          disabled={nurse.current_patients === 0 || !nurse.is_active}
                         >
-                          {resendingId === nurse.user_id ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Resend Aktivasi
-                            </>
-                          )}
-                        </Button>
-                      )}
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+
+                        {/* Resend Activation Button (only for inactive nurses) */}
+                        {!nurse.is_active && (
+                          <button
+                            onClick={() => handleResendActivation(nurse.user_id)}
+                            disabled={resendingId === nurse.user_id}
+                            className="p-2 text-[#3B9ECF] hover:text-[#2d7ba8] hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            title="Kirim Ulang Email Aktivasi"
+                          >
+                            {resendingId === nurse.user_id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Mail className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => handleDeleteNurse(nurse.id, nurse.nama_lengkap, e)}
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                          title="Hapus Perawat"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -200,6 +268,40 @@ export default function NurseManagementPage() {
           </table>
         </div>
       </div>
+
+      {/* Transfer All Patients Modal */}
+      <TransferPatientModal
+        isOpen={isTransferModalOpen}
+        onClose={() => {
+          setIsTransferModalOpen(false);
+          setSelectedNurse(null);
+        }}
+        sourceNurse={selectedNurse ? {
+          id: selectedNurse.id,
+          name: selectedNurse.nama_lengkap,
+          str_number: selectedNurse.nip,
+          role: 'Perawat' as const,
+          workload: selectedNurse.current_patients,
+          max_capacity: 50,
+          status: (selectedNurse.is_active ? 'Aktif' : 'Nonaktif') as 'Aktif' | 'Nonaktif',
+          avatar_initials: selectedNurse.nama_lengkap.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+          avatar_color: 'bg-blue-100 text-blue-700',
+        } : null}
+        targetNurses={nurses
+          .filter(n => n.id !== selectedNurse?.id && n.is_active)
+          .map(n => ({
+            id: n.id,
+            name: n.nama_lengkap,
+            str_number: n.nip,
+            role: 'Perawat' as const,
+            workload: n.current_patients,
+            max_capacity: 50,
+            status: (n.is_active ? 'Aktif' : 'Nonaktif') as 'Aktif' | 'Nonaktif',
+            avatar_initials: n.nama_lengkap.split(' ').map(name => name[0]).slice(0, 2).join('').toUpperCase(),
+            avatar_color: 'bg-blue-100 text-blue-700',
+          }))}
+        onTransfer={handleTransferAllPatients}
+      />
     </div>
   );
 }

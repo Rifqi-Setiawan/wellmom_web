@@ -90,4 +90,63 @@ export const nurseApi = {
   acceptTerms: async (token: string): Promise<void> => {
     await api.post('/api/v1/perawat/activation/accept-terms', { token });
   },
+
+  // Transfer Patients (Puskesmas Admin)
+  transferPatients: async (token: string, sourceNurseId: number, targetNurseId: number): Promise<void> => {
+    await api.post(
+      `/api/v1/perawat/${sourceNurseId}/transfer-all-patients`,
+      { target_perawat_id: targetNurseId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  },
+
+  // Delete Nurse (Puskesmas Admin)
+  deleteNurse: async (token: string, perawatId: number): Promise<void> => {
+    await api.delete(
+      `/api/v1/perawat/${perawatId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  },
+
+  // Get Patients by Nurse (Puskesmas Admin)
+  getPatientsByNurse: async (token: string, perawatId: number) => {
+    const response = await api.get(
+      `/api/v1/ibu-hamil/by-perawat/${perawatId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Transfer Single Patient (Puskesmas Admin)
+  transferSinglePatient: async (
+    token: string, 
+    sourcePerawatId: number, 
+    ibuHamilId: number, 
+    targetPerawatId: number
+  ): Promise<void> => {
+    await api.post(
+      `/api/v1/perawat/${sourcePerawatId}/transfer-patient`,
+      { 
+        ibu_hamil_id: ibuHamilId,
+        target_perawat_id: targetPerawatId 
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  },
 };

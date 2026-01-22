@@ -7,23 +7,58 @@ import { Bell, HelpCircle, Settings as SettingsIcon, LogOut } from 'lucide-react
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, clearAuth, token } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Wait for Zustand to hydrate from localStorage
+  useEffect(() => {
+    console.log('🔄 Super Admin Layout: Waiting for hydration...');
+    setIsHydrated(true);
+    console.log('✅ Super Admin Layout: Hydrated');
+  }, []);
 
   useEffect(() => {
+    console.log('🔍 Super Admin Layout: Auth check', {
+      isHydrated,
+      isAuthenticated,
+      hasUser: !!user,
+      userRole: user?.role,
+      hasToken: !!token,
+    });
+
+    // Don't check auth until Zustand has hydrated
+    if (!isHydrated) {
+      console.log('⏳ Super Admin Layout: Waiting for hydration...');
+      return;
+    }
+
+    // Check authentication after hydration
     if (!isAuthenticated || !user || user.role !== 'super_admin') {
+      console.log('🚫 Super Admin Layout: Auth check failed, redirecting to login');
+      console.log('   Details:', {
+        isAuthenticated,
+        hasUser: !!user,
+        userRole: user?.role,
+        expectedRole: 'super_admin',
+        hasToken: !!token,
+      });
       router.push('/login');
       return;
     }
+
+    console.log('✅ Super Admin Layout: Auth check passed');
+    console.log('   User:', { role: user.role, email: user.email, id: user.id });
     setIsLoading(false);
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, token, router, isHydrated]);
 
   const handleLogout = () => {
     clearAuth();
     router.push('/login');
   };
 
-  if (isLoading) {
+  // Show loading while hydrating or checking auth
+  if (!isHydrated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3B9ECF]"></div>
