@@ -108,8 +108,8 @@ export default function PatientManagementPage() {
   };
 
   // Get risk badge
-  const getRiskBadge = (riskLevel: RiskLevel) => {
-    const badges = {
+  const getRiskBadge = (riskLevel: string | null | undefined) => {
+    const badges: Record<string, { label: string; className: string }> = {
       tinggi: {
         label: 'High Risk',
         className: 'bg-red-100 text-red-700',
@@ -123,14 +123,15 @@ export default function PatientManagementPage() {
         className: 'bg-green-100 text-green-700',
       },
     };
-    return badges[riskLevel];
+    // Fallback to 'sedang' if risk level is not found or invalid
+    return badges[riskLevel || 'sedang'] || badges['sedang'];
   };
 
   // Get status badge
   const getStatusBadge = (patient: IbuHamil) => {
     // Determine status based on patient data
     // For now, using is_active and other fields to determine status
-    if (!patient.is_active) {
+    if (patient.is_active === false) {
       return {
         label: 'Nonaktif',
         className: 'bg-gray-100 text-gray-700',
@@ -146,6 +147,7 @@ export default function PatientManagementPage() {
       };
     }
 
+    // Default to active status
     return {
       label: 'Aktif',
       className: 'bg-green-100 text-green-700',
@@ -323,20 +325,26 @@ export default function PatientManagementPage() {
                   const statusBadge = getStatusBadge(patient);
                   const nurseName = getNurseName(patient.perawat_id);
 
+                  // Safety check - ensure badges are defined
+                  if (!riskBadge || !statusBadge) {
+                    console.error('Invalid badge data for patient:', patient);
+                    return null;
+                  }
+
                   return (
                     <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{patient.nama_lengkap}</p>
-                          <p className="text-xs text-gray-500">NIK: {patient.nik}</p>
+                          <p className="text-sm font-medium text-gray-900">{patient.nama_lengkap || '-'}</p>
+                          <p className="text-xs text-gray-500">NIK: {patient.nik || '-'}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900">{patient.usia_kehamilan} Minggu</span>
+                        <span className="text-sm text-gray-900">{patient.usia_kehamilan || 0} Minggu</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${riskBadge.className}`}>
-                          {riskBadge.label}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${riskBadge.className || 'bg-gray-100 text-gray-700'}`}>
+                          {riskBadge.label || 'Unknown'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -350,8 +358,8 @@ export default function PatientManagementPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className}`}>
-                          {statusBadge.label}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className || 'bg-gray-100 text-gray-700'}`}>
+                          {statusBadge.label || 'Unknown'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
