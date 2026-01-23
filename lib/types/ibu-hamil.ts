@@ -35,7 +35,7 @@ export interface IbuHamil {
   asma: boolean;
   penyakit_ginjal: boolean;
   tbc_malaria: boolean;
-  risk_level: 'rendah' | 'sedang' | 'tinggi';
+  risk_level: 'rendah' | 'sedang' | 'tinggi' | null;
   risk_level_set_by: number | null;
   risk_level_set_by_name: string | null;
   risk_level_set_at: string | null;

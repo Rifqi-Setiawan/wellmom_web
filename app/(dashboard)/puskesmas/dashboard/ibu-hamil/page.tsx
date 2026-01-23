@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Eye, Edit, Users, AlertTriangle, AlertCircle, UserPlus, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, Edit, Users, AlertTriangle, AlertCircle, UserPlus, Filter, ChevronLeft, ChevronRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { puskesmasApi } from "@/lib/api/puskesmas";
@@ -10,8 +10,9 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import type { IbuHamil } from "@/lib/types/ibu-hamil";
 import { nurseApi } from "@/lib/api/nurse";
 import type { NurseListItem } from "@/lib/types/nurse";
+import { AssignBidanModal } from "@/components/assign-bidan-modal";
 
-type RiskLevel = 'rendah' | 'sedang' | 'tinggi';
+type RiskLevel = 'rendah' | 'sedang' | 'tinggi' | 'belum_ditentukan';
 type AssignmentStatus = 'all' | 'assigned' | 'unassigned';
 
 export default function PatientManagementPage() {
@@ -25,28 +26,33 @@ export default function PatientManagementPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Modal state
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<IbuHamil | null>(null);
 
   // Fetch patients
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!token || !puskesmasInfo) return;
-      
-      setIsLoading(true);
-      try {
-        const [patientsData, nursesData] = await Promise.all([
-          puskesmasApi.getIbuHamilByPuskesmas(token, puskesmasInfo.id),
-          nurseApi.getNurses(token),
-        ]);
-        setPatients(patientsData);
-        setNurses(nursesData.perawat_list);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    if (!token || !puskesmasInfo) return;
+    
+    setIsLoading(true);
+    try {
+      const [patientsData, nursesData] = await Promise.all([
+        puskesmasApi.getIbuHamilByPuskesmas(token, puskesmasInfo.id),
+        nurseApi.getNurses(token),
+      ]);
+      setPatients(patientsData);
+      setNurses(nursesData.perawat_list);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, puskesmasInfo]);
 
   // Reset to page 1 when filters change
@@ -59,6 +65,8 @@ export default function PatientManagementPage() {
     const total = patients.length;
     const highRisk = patients.filter(p => p.risk_level === 'tinggi').length;
     const mediumRisk = patients.filter(p => p.risk_level === 'sedang').length;
+    const lowRisk = patients.filter(p => p.risk_level === 'rendah').length;
+    const undetermined = patients.filter(p => !p.risk_level || p.risk_level === null).length;
     const unassigned = patients.filter(p => !p.perawat_id).length;
     
     // Calculate percentage increase (mock data for now)
@@ -68,6 +76,8 @@ export default function PatientManagementPage() {
       total,
       highRisk,
       mediumRisk,
+      lowRisk,
+      undetermined,
       unassigned,
       percentageIncrease,
     };
@@ -82,7 +92,10 @@ export default function PatientManagementPage() {
         patient.nik.includes(searchQuery);
 
       // Risk filter
-      const matchesRisk = riskFilter === 'all' || patient.risk_level === riskFilter;
+      const matchesRisk = 
+        riskFilter === 'all' || 
+        (riskFilter === 'belum_ditentukan' && (!patient.risk_level || patient.risk_level === null)) ||
+        (riskFilter !== 'belum_ditentukan' && patient.risk_level === riskFilter);
 
       // Assignment filter
       const matchesAssignment = 
@@ -109,22 +122,43 @@ export default function PatientManagementPage() {
 
   // Get risk badge
   const getRiskBadge = (riskLevel: string | null | undefined) => {
-    const badges: Record<string, { label: string; className: string }> = {
+    // If risk level is null or undefined, show "Belum Ditentukan"
+    if (!riskLevel || riskLevel === null || riskLevel === undefined) {
+      return {
+        label: 'Belum Ditentukan',
+        className: 'bg-amber-50 text-amber-700 border border-amber-200',
+        icon: AlertTriangle,
+        iconColor: 'text-amber-600',
+      };
+    }
+
+    const badges: Record<string, { label: string; className: string; icon?: any; iconColor?: string }> = {
       tinggi: {
-        label: 'High Risk',
-        className: 'bg-red-100 text-red-700',
+        label: 'Risiko Tinggi',
+        className: 'bg-red-100 text-red-700 border border-red-200',
+        icon: AlertTriangle,
+        iconColor: 'text-red-600',
       },
       sedang: {
-        label: 'Medium Risk',
-        className: 'bg-orange-100 text-orange-700',
+        label: 'Risiko Menengah',
+        className: 'bg-orange-100 text-orange-700 border border-orange-200',
+        icon: AlertCircle,
+        iconColor: 'text-orange-600',
       },
       rendah: {
-        label: 'Low Risk',
-        className: 'bg-green-100 text-green-700',
+        label: 'Risiko Rendah',
+        className: 'bg-green-100 text-green-700 border border-green-200',
+        icon: null,
+        iconColor: '',
       },
     };
-    // Fallback to 'sedang' if risk level is not found or invalid
-    return badges[riskLevel || 'sedang'] || badges['sedang'];
+    
+    return badges[riskLevel] || {
+      label: 'Belum Ditentukan',
+      className: 'bg-amber-50 text-amber-700 border border-amber-200',
+      icon: AlertTriangle,
+      iconColor: 'text-amber-600',
+    };
   };
 
   // Get status badge
@@ -253,6 +287,7 @@ export default function PatientManagementPage() {
             <option value="tinggi">Risiko Tinggi</option>
             <option value="sedang">Risiko Menengah</option>
             <option value="rendah">Risiko Rendah</option>
+            <option value="belum_ditentukan">Belum Ditentukan</option>
           </select>
 
           {/* Assignment Status Filter */}
@@ -343,15 +378,25 @@ export default function PatientManagementPage() {
                         <span className="text-sm text-gray-900">{patient.usia_kehamilan || 0} Minggu</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${riskBadge.className || 'bg-gray-100 text-gray-700'}`}>
-                          {riskBadge.label || 'Unknown'}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${riskBadge.className || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
+                          {riskBadge.icon && (
+                            <riskBadge.icon className={`w-3.5 h-3.5 ${riskBadge.iconColor || 'text-gray-600'}`} />
+                          )}
+                          <span>{riskBadge.label || 'Unknown'}</span>
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         {patient.perawat_id ? (
                           <span className="text-sm text-gray-900">{nurseName}</span>
                         ) : (
-                          <button className="inline-flex items-center gap-1 text-sm text-[#3B9ECF] hover:text-[#2d7ba8] font-medium">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPatient(patient);
+                              setIsAssignModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 text-sm text-[#3B9ECF] hover:text-[#2d7ba8] font-medium"
+                          >
                             <UserPlus className="w-4 h-4" />
                             Tugaskan Bidan
                           </button>
@@ -448,6 +493,19 @@ export default function PatientManagementPage() {
           </div>
         )}
       </div>
+
+      {/* Assign Bidan Modal */}
+      <AssignBidanModal
+        isOpen={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        patient={selectedPatient}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
     </div>
   );
 }
