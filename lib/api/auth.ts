@@ -206,4 +206,22 @@ export const authApi = {
       // We continue even if API fails to clear local state
     }
   },
+
+  // Logout Perawat
+  logoutPerawat: async (token: string): Promise<void> => {
+    try {
+      await api.post(
+        '/api/v1/auth/logout/perawat',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Perawat Logout error:', error);
+      // We continue even if API fails to clear local state
+    }
+  },
 };

@@ -65,13 +65,13 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
 
   const handleLogout = async () => {
     try {
-      // Logout API call if available
-      // For now, just clear auth state
-      clearAuth();
-      router.push('/login');
+      if (token) {
+        await authApi.logoutPerawat(token);
+      }
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout API fails, clear local auth
+      // We continue even if API fails to clear local state
+    } finally {
       clearAuth();
       router.push('/login');
     }
