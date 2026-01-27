@@ -149,4 +149,17 @@ export const nurseApi = {
       }
     );
   },
+
+  // Get My Patients (Perawat - for logged in perawat)
+  getMyPatients: async (token: string) => {
+    const response = await api.get(
+      '/api/v1/ibu-hamil/perawat/my-patients',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
 };
