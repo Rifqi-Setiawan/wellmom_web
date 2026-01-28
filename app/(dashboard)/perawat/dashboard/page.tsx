@@ -95,12 +95,16 @@ export default function PerawatDashboard() {
     };
   }, [patients]);
 
-  // Filter patients based on search query
+  // Filter PRIORITY patients (only risiko sedang & tinggi), then apply search query
   const filteredPatients = useMemo(() => {
-    if (!searchQuery) return patients;
-    
+    const priorityPatients = patients.filter(
+      (patient) => patient.risk_level === 'sedang' || patient.risk_level === 'tinggi'
+    );
+
+    if (!searchQuery) return priorityPatients;
+
     const query = searchQuery.toLowerCase();
-    return patients.filter(
+    return priorityPatients.filter(
       (patient) =>
         patient.nama_lengkap.toLowerCase().includes(query) ||
         patient.nik.includes(query)
@@ -356,7 +360,13 @@ export default function PerawatDashboard() {
               <YAxis
                 tick={{ fontSize: 12, fill: '#6B7280' }}
                 stroke="#E5E7EB"
-                domain={[0, (dataMax: number) => Math.max(dataMax * 1.2, 300)]}
+                domain={[0, (dataMax: number) => {
+                  // Sesuaikan skala dengan jumlah pasien agar bar tetap terlihat,
+                  // tanpa memaksa batas atas yang terlalu besar.
+                  if (!dataMax || dataMax <= 0) return 5;
+                  const padded = dataMax * 1.4;
+                  return Math.max(padded, dataMax + 1);
+                }]}
               />
               <Tooltip
                 contentStyle={{

@@ -162,4 +162,81 @@ export const nurseApi = {
     );
     return response.data;
   },
+
+  // Get All Patients by Puskesmas (Perawat - for logged in perawat to see all patients in their puskesmas)
+  getAllPatientsByPuskesmas: async (token: string, puskesmasId: number) => {
+    console.log(`👶 API Request (Perawat): GET /api/v1/ibu-hamil/by-puskesmas/${puskesmasId}`);
+    console.log('🔑 Using token:', token.substring(0, 20) + '...');
+    
+    const response = await api.get(
+      `/api/v1/ibu-hamil/by-puskesmas/${puskesmasId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    console.log('👶 API Response Status:', response.status);
+    console.log('👶 Ibu Hamil Count:', response.data.length);
+    
+    return response.data;
+  },
+
+  // Get Ibu Hamil Detail (Perawat)
+  getIbuHamilDetail: async (token: string, ibuHamilId: number) => {
+    const response = await api.get(
+      `/api/v1/ibu-hamil/${ibuHamilId}/detail`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Get Health Records (Perawat)
+  getHealthRecords: async (token: string, ibuHamilId: number) => {
+    const response = await api.get(
+      `/api/v1/health_records/ibu-hamil/${ibuHamilId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Get Latest Health Record for a Patient (Perawat)
+  getLatestHealthRecord: async (token: string, ibuHamilId: number) => {
+    const response = await api.get(
+      `/api/v1/ibu-hamil/perawat/${ibuHamilId}/latest-health-record`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Update Risk Level for Patient (Perawat)
+  updateRiskLevel: async (
+    token: string,
+    ibuHamilId: number,
+    riskLevel: 'rendah' | 'sedang' | 'tinggi'
+  ) => {
+    const response = await api.patch(
+      `/api/v1/perawat/me/patients/${ibuHamilId}/risk-level`,
+      { risk_level: riskLevel },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
 };

@@ -36,22 +36,31 @@ export const useAuthStore = create<AuthState>()(
           role: response.role,
         };
 
+        const puskesmasInfo = 'puskesmas' in response ? response.puskesmas : null;
+        const perawatInfo = 'perawat' in response ? response.perawat : null;
+
         console.log('🔐 Setting auth state:', {
           role: response.role,
           userId: response.user.id,
           hasToken: !!response.access_token,
-          puskesmasInfo: 'puskesmas' in response ? response.puskesmas : null,
+          puskesmasInfo: puskesmasInfo,
+          perawatInfo: perawatInfo,
         });
 
         set({
           user: authUser,
           token: response.access_token,
-          puskesmasInfo: 'puskesmas' in response ? response.puskesmas : null,
-          perawatInfo: 'perawat' in response ? response.perawat : null,
+          puskesmasInfo: puskesmasInfo,
+          perawatInfo: perawatInfo,
           isAuthenticated: true,
         });
 
-        console.log('✅ Auth state set successfully');
+        console.log('✅ Auth state set successfully', {
+          user: authUser,
+          hasToken: !!response.access_token,
+          puskesmasInfo: puskesmasInfo,
+          perawatInfo: perawatInfo,
+        });
       },
       clearAuth: () =>
         set({
