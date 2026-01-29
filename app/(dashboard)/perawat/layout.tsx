@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuthStore } from '@/lib/stores/auth-store';
-import { authApi } from '@/lib/api/auth';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuthStore } from "@/lib/stores/auth-store";
+import { authApi } from "@/lib/api/auth";
+import { nurseApi } from "@/lib/api/nurse";
+import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Users,
@@ -13,24 +14,48 @@ import {
   LogOut,
   Home,
   FileText,
-} from 'lucide-react';
+} from "lucide-react";
+import { buildImageUrl } from "@/lib/utils";
+import type { PerawatProfile } from "@/lib/types/perawat";
 
-export default function PerawatLayout({ children }: { children: React.ReactNode }) {
+export default function PerawatLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, token, isAuthenticated, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Wait for Zustand to hydrate from localStorage
   useEffect(() => {
-    console.log('🔄 Perawat Layout: Waiting for hydration...');
+    console.log("🔄 Perawat Layout: Waiting for hydration...");
     setIsHydrated(true);
-    console.log('✅ Perawat Layout: Hydrated');
+    console.log("✅ Perawat Layout: Hydrated");
   }, []);
 
+  // Fetch profile photo setelah auth check berhasil
   useEffect(() => {
-    console.log('🔍 Perawat Layout: Auth check', {
+    if (isAuthenticated && token && user?.role === "perawat") {
+      const fetchProfilePhoto = async () => {
+        try {
+          const profile = await nurseApi.getMe(token);
+          if (profile?.profile_photo_url) {
+            setProfilePhoto(profile.profile_photo_url);
+          }
+        } catch (error) {
+          console.error("Failed to fetch profile photo:", error);
+        }
+      };
+      fetchProfilePhoto();
+    }
+  }, [isAuthenticated, token, user?.role]);
+
+  useEffect(() => {
+    console.log("🔍 Perawat Layout: Auth check", {
       isHydrated,
       isAuthenticated,
       hasUser: !!user,
@@ -40,26 +65,30 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
 
     // Don't check auth until Zustand has hydrated
     if (!isHydrated) {
-      console.log('⏳ Perawat Layout: Waiting for hydration...');
+      console.log("⏳ Perawat Layout: Waiting for hydration...");
       return;
     }
 
     // Check authentication after hydration
-    if (!isAuthenticated || !user || user.role !== 'perawat') {
-      console.log('🚫 Perawat Layout: Auth check failed, redirecting to login');
-      console.log('   Details:', {
+    if (!isAuthenticated || !user || user.role !== "perawat") {
+      console.log("🚫 Perawat Layout: Auth check failed, redirecting to login");
+      console.log("   Details:", {
         isAuthenticated,
         hasUser: !!user,
         userRole: user?.role,
-        expectedRole: 'perawat',
+        expectedRole: "perawat",
         hasToken: !!token,
       });
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
-    console.log('✅ Perawat Layout: Auth check passed');
-    console.log('   User:', { role: user.role, email: user.email, id: user.id });
+    console.log("✅ Perawat Layout: Auth check passed");
+    console.log("   User:", {
+      role: user.role,
+      email: user.email,
+      id: user.id,
+    });
     setIsLoading(false);
   }, [isAuthenticated, user, token, router, isHydrated]);
 
@@ -69,11 +98,11 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
         await authApi.logoutPerawat(token);
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // We continue even if API fails to clear local state
     } finally {
       clearAuth();
-      router.push('/login');
+      router.push("/login");
     }
   };
 
@@ -88,27 +117,27 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
   // Get user initials for profile picture
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
   const menuItems = [
     {
-      href: '/perawat/dashboard',
-      label: 'Beranda',
+      href: "/perawat/dashboard",
+      label: "Beranda",
       icon: Home,
     },
     {
-      href: '/perawat/pasien',
-      label: 'Daftar Pasien',
+      href: "/perawat/pasien",
+      label: "Daftar Pasien",
       icon: Users,
     },
     {
-      href: '/perawat/profile',
-      label: 'Pengaturan',
+      href: "/perawat/pengaturan",
+      label: "Pengaturan",
       icon: Settings,
     },
   ];
@@ -120,16 +149,27 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
         {/* Profile Section */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white font-semibold text-lg">
-              {user?.full_name ? getInitials(user.full_name) : 'P'}
+            <div className="w-12 h-12 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white font-semibold text-lg overflow-hidden flex-shrink-0 relative">
+              {profilePhoto ? (
+                <img
+                  src={buildImageUrl(profilePhoto)}
+                  alt={user?.full_name || "Profile"}
+                  className="w-full h-full object-cover absolute inset-0"
+                  onError={() => {
+                    console.error("Failed to load profile photo");
+                    setProfilePhoto(null);
+                  }}
+                />
+              ) : null}
+              <span className={profilePhoto ? "invisible" : "visible"}>
+                {user?.full_name ? getInitials(user.full_name) : "P"}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">
-                {user?.full_name || 'Perawat'}
+                {user?.full_name || "Perawat"}
               </p>
-              <p className="text-xs text-gray-500 truncate">
-                Bidan
-              </p>
+              <p className="text-xs text-gray-500 truncate">Bidan</p>
             </div>
           </div>
         </div>
@@ -139,17 +179,19 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
           <ul className="space-y-2">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || 
-                (item.href !== '/perawat/dashboard' && pathname.startsWith(item.href));
-              
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/perawat/dashboard" &&
+                  pathname.startsWith(item.href));
+
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-[#3B9ECF] text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-[#3B9ECF] text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -158,7 +200,7 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
                 </li>
               );
             })}
-            
+
             {/* Logout Button */}
             <li className="pt-4 border-t border-gray-200">
               <button
@@ -174,9 +216,7 @@ export default function PerawatLayout({ children }: { children: React.ReactNode 
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 min-h-screen">
-        {children}
-      </main>
+      <main className="ml-64 min-h-screen">{children}</main>
     </div>
   );
 }

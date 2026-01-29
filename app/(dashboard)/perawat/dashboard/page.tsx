@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, Bell, Download, Eye } from 'lucide-react';
-import { nurseApi } from '@/lib/api/nurse';
-import { useAuthStore } from '@/lib/stores/auth-store';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Bell, Download, Eye } from "lucide-react";
+import { nurseApi } from "@/lib/api/nurse";
+import { useAuthStore } from "@/lib/stores/auth-store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
   Bar,
@@ -19,7 +19,7 @@ import {
   Legend,
   LabelList,
   Cell,
-} from 'recharts';
+} from "recharts";
 
 interface PerawatPatient {
   id: number;
@@ -34,7 +34,7 @@ interface PerawatPatient {
   usia_kehamilan: number;
   kehamilan_ke: number;
   jumlah_anak: number;
-  risk_level: 'rendah' | 'sedang' | 'tinggi' | null;
+  risk_level: "rendah" | "sedang" | "tinggi" | null;
   address: string;
   emergency_contact_name: string;
   emergency_contact_phone: string;
@@ -46,11 +46,14 @@ export default function PerawatDashboard() {
   const { token } = useAuthStore();
   const [patients, setPatients] = useState<PerawatPatient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [latestCheckups, setLatestCheckups] = useState<
+    Record<number, string | null>
+  >({});
 
   useEffect(() => {
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     fetchPatients();
@@ -58,26 +61,59 @@ export default function PerawatDashboard() {
 
   const fetchPatients = async () => {
     if (!token) return;
-    
+
     setIsLoading(true);
     try {
       const data = await nurseApi.getMyPatients(token);
       setPatients(data);
+
+      // Fetch latest checkups for each patient
+      fetchLatestCheckups(data, token);
     } catch (error) {
-      console.error('Failed to fetch patients:', error);
+      console.error("Failed to fetch patients:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchLatestCheckups = async (
+    patientList: PerawatPatient[],
+    authToken: string,
+  ) => {
+    try {
+      const entries = await Promise.all(
+        patientList.map(async (patient) => {
+          try {
+            const data = await nurseApi.getLatestHealthRecord(
+              authToken,
+              patient.id,
+            );
+            return [patient.id, data.checkup_date as string] as const;
+          } catch (err: unknown) {
+            // Jika belum ada data health record, return null
+            return [patient.id, null] as const;
+          }
+        }),
+      );
+
+      const map: Record<number, string | null> = {};
+      for (const [id, date] of entries) {
+        map[id] = date;
+      }
+      setLatestCheckups(map);
+    } catch (error) {
+      console.error("Failed to fetch latest checkups:", error);
     }
   };
 
   // Calculate statistics
   const statistics = useMemo(() => {
     const total = patients.length;
-    const tinggi = patients.filter(p => p.risk_level === 'tinggi').length;
-    const sedang = patients.filter(p => p.risk_level === 'sedang').length;
-    const rendah = patients.filter(p => p.risk_level === 'rendah').length;
-    const belumDitentukan = patients.filter(p => !p.risk_level).length;
-    
+    const tinggi = patients.filter((p) => p.risk_level === "tinggi").length;
+    const sedang = patients.filter((p) => p.risk_level === "sedang").length;
+    const rendah = patients.filter((p) => p.risk_level === "rendah").length;
+    const belumDitentukan = patients.filter((p) => !p.risk_level).length;
+
     // Get current month new patients (assuming created_at exists, if not, we'll use a placeholder)
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -98,7 +134,8 @@ export default function PerawatDashboard() {
   // Filter PRIORITY patients (only risiko sedang & tinggi), then apply search query
   const filteredPatients = useMemo(() => {
     const priorityPatients = patients.filter(
-      (patient) => patient.risk_level === 'sedang' || patient.risk_level === 'tinggi'
+      (patient) =>
+        patient.risk_level === "sedang" || patient.risk_level === "tinggi",
     );
 
     if (!searchQuery) return priorityPatients;
@@ -107,64 +144,78 @@ export default function PerawatDashboard() {
     return priorityPatients.filter(
       (patient) =>
         patient.nama_lengkap.toLowerCase().includes(query) ||
-        patient.nik.includes(query)
+        patient.nik.includes(query),
     );
   }, [patients, searchQuery]);
 
   // Get risk badge
-  const getRiskBadge = (riskLevel: 'rendah' | 'sedang' | 'tinggi' | null) => {
+  const getRiskBadge = (riskLevel: "rendah" | "sedang" | "tinggi" | null) => {
     if (!riskLevel) {
       return {
-        label: 'Belum Ditentukan',
-        className: 'bg-amber-100 text-amber-800 border-amber-200',
-        dot: 'bg-amber-500',
+        label: "Belum Ditentukan",
+        className: "bg-amber-100 text-amber-800 border-amber-200",
+        dot: "bg-amber-500",
       };
     }
-    
+
     switch (riskLevel) {
-      case 'tinggi':
+      case "tinggi":
         return {
-          label: 'Risiko Tinggi',
-          className: 'bg-red-100 text-red-800 border-red-200',
-          dot: 'bg-red-500',
+          label: "Risiko Tinggi",
+          className: "bg-red-100 text-red-800 border-red-200",
+          dot: "bg-red-500",
         };
-      case 'sedang':
+      case "sedang":
         return {
-          label: 'Risiko Sedang',
-          className: 'bg-orange-100 text-orange-800 border-orange-200',
-          dot: 'bg-orange-500',
+          label: "Risiko Sedang",
+          className: "bg-orange-100 text-orange-800 border-orange-200",
+          dot: "bg-orange-500",
         };
-      case 'rendah':
+      case "rendah":
         return {
-          label: 'Risiko Rendah',
-          className: 'bg-green-100 text-green-800 border-green-200',
-          dot: 'bg-green-500',
+          label: "Risiko Rendah",
+          className: "bg-green-100 text-green-800 border-green-200",
+          dot: "bg-green-500",
         };
       default:
         return {
-          label: 'Belum Ditentukan',
-          className: 'bg-amber-100 text-amber-800 border-amber-200',
-          dot: 'bg-amber-500',
+          label: "Belum Ditentukan",
+          className: "bg-amber-100 text-amber-800 border-amber-200",
+          dot: "bg-amber-500",
         };
+    }
+  };
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
     }
   };
 
   // Chart data for risk distribution
   const chartData = [
     {
-      name: 'RISIKO TINGGI',
+      name: "RISIKO TINGGI",
       value: statistics.tinggi,
-      color: '#f87171',
+      color: "#f87171",
     },
     {
-      name: 'RISIKO SEDANG',
+      name: "RISIKO SEDANG",
       value: statistics.sedang,
-      color: '#facc15',
+      color: "#facc15",
     },
     {
-      name: 'RISIKO RENDAH',
+      name: "RISIKO RENDAH",
       value: statistics.rendah,
-      color: '#4ade80',
+      color: "#4ade80",
     },
   ];
 
@@ -188,7 +239,8 @@ export default function PerawatDashboard() {
               Dashboard Pemantauan Pasien
             </h1>
             <p className="text-gray-600">
-              Ringkasan data pasien berdasarkan tingkat risiko kesehatan terkini.
+              Ringkasan data pasien berdasarkan tingkat risiko kesehatan
+              terkini.
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -212,7 +264,9 @@ export default function PerawatDashboard() {
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-3xl font-bold text-gray-900">{statistics.total}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {statistics.total}
+              </p>
               <p className="text-sm text-green-600 mt-1">+5%</p>
             </div>
           </div>
@@ -225,7 +279,9 @@ export default function PerawatDashboard() {
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-3xl font-bold text-gray-900">{statistics.tinggi}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {statistics.tinggi}
+              </p>
               <p className="text-sm text-red-600 mt-1">+12%</p>
             </div>
           </div>
@@ -238,20 +294,24 @@ export default function PerawatDashboard() {
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-3xl font-bold text-gray-900">{statistics.sedang}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {statistics.sedang}
+              </p>
               <p className="text-sm text-red-600 mt-1">-3%</p>
             </div>
           </div>
         </div>
 
-        {/* Pasien Baru */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        {/* Risiko Rendah */}
+        <div className="bg-white rounded-xl border-l-4 border-green-500 border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Pasien Baru (Bulan Ini)</h3>
+            <h3 className="text-sm font-medium text-gray-600">Risiko Rendah</h3>
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-3xl font-bold text-gray-900">{statistics.pasienBaru}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {statistics.rendah}
+              </p>
               <p className="text-sm text-green-600 mt-1">+8%</p>
             </div>
           </div>
@@ -261,7 +321,9 @@ export default function PerawatDashboard() {
       {/* Daftar Pasien Prioritas */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Daftar Pasien Prioritas</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Daftar Pasien Prioritas
+          </h2>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
@@ -279,19 +341,33 @@ export default function PerawatDashboard() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">NAMA PASIEN</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">NIK</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">USIA</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">STATUS RISIKO</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">TERAKHIR PERIKSA</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">AKSI</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  NAMA PASIEN
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  NIK
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  USIA
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  STATUS RISIKO
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  TERAKHIR PERIKSA
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  AKSI
+                </th>
               </tr>
             </thead>
             <tbody>
               {filteredPatients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-gray-500">
-                    {searchQuery ? 'Tidak ada pasien yang ditemukan' : 'Belum ada pasien'}
+                    {searchQuery
+                      ? "Tidak ada pasien yang ditemukan"
+                      : "Belum ada pasien"}
                   </td>
                 </tr>
               ) : (
@@ -303,28 +379,38 @@ export default function PerawatDashboard() {
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-4 px-4">
-                        <p className="text-sm font-medium text-gray-900">{patient.nama_lengkap}</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {patient.nama_lengkap}
+                        </p>
                       </td>
                       <td className="py-4 px-4">
                         <p className="text-sm text-gray-600">{patient.nik}</p>
                       </td>
                       <td className="py-4 px-4">
-                        <p className="text-sm text-gray-600">{patient.age} Thn</p>
+                        <p className="text-sm text-gray-600">
+                          {patient.age} Thn
+                        </p>
                       </td>
                       <td className="py-4 px-4">
                         <Badge
                           className={`${riskBadge.className} border flex items-center gap-1.5 w-fit`}
                         >
-                          <span className={`w-2 h-2 rounded-full ${riskBadge.dot}`}></span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${riskBadge.dot}`}
+                          ></span>
                           {riskBadge.label}
                         </Badge>
                       </td>
                       <td className="py-4 px-4">
-                        <p className="text-sm text-gray-600">-</p>
+                        <p className="text-sm text-gray-600">
+                          {formatDate(latestCheckups[patient.id])}
+                        </p>
                       </td>
                       <td className="py-4 px-4">
                         <button
-                          onClick={() => router.push(`/perawat/pasien/${patient.id}`)}
+                          onClick={() =>
+                            router.push(`/perawat/pasien/${patient.id}`)
+                          }
                           className="text-[#3B9ECF] hover:text-[#2d7ba8] text-sm font-medium transition-colors"
                         >
                           Detail
@@ -342,37 +428,46 @@ export default function PerawatDashboard() {
       {/* Statistik Risiko Pasien */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Statistik Risiko Pasien</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Statistik Risiko Pasien
+          </h2>
           <p className="text-sm text-gray-600">
-            Visualisasi distribusi jumlah pasien berdasarkan kategori risiko kesehatan.
+            Visualisasi distribusi jumlah pasien berdasarkan kategori risiko
+            kesehatan.
           </p>
         </div>
 
         <div className="mb-6">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 12, fill: '#6B7280' }}
+                tick={{ fontSize: 12, fill: "#6B7280" }}
                 stroke="#E5E7EB"
               />
               <YAxis
-                tick={{ fontSize: 12, fill: '#6B7280' }}
+                tick={{ fontSize: 12, fill: "#6B7280" }}
                 stroke="#E5E7EB"
-                domain={[0, (dataMax: number) => {
-                  // Sesuaikan skala dengan jumlah pasien agar bar tetap terlihat,
-                  // tanpa memaksa batas atas yang terlalu besar.
-                  if (!dataMax || dataMax <= 0) return 5;
-                  const padded = dataMax * 1.4;
-                  return Math.max(padded, dataMax + 1);
-                }]}
+                domain={[
+                  0,
+                  (dataMax: number) => {
+                    // Sesuaikan skala dengan jumlah pasien agar bar tetap terlihat,
+                    // tanpa memaksa batas atas yang terlalu besar.
+                    if (!dataMax || dataMax <= 0) return 5;
+                    const padded = dataMax * 1.4;
+                    return Math.max(padded, dataMax + 1);
+                  },
+                ]}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
+                  backgroundColor: "#fff",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "8px",
                 }}
               />
               <Bar dataKey="value" radius={[8, 8, 0, 0]}>
@@ -382,7 +477,7 @@ export default function PerawatDashboard() {
                 <LabelList
                   dataKey="value"
                   position="top"
-                  style={{ fill: '#374151', fontSize: '14px', fontWeight: 600 }}
+                  style={{ fill: "#374151", fontSize: "14px", fontWeight: 600 }}
                 />
               </Bar>
             </BarChart>
@@ -409,7 +504,9 @@ export default function PerawatDashboard() {
         <div className="mt-6 flex justify-end">
           <div className="bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
             <p className="text-xs text-gray-500">TOTAL POPULASI PASIEN</p>
-            <p className="text-lg font-bold text-gray-900">{statistics.total} jiwa</p>
+            <p className="text-lg font-bold text-gray-900">
+              {statistics.total} jiwa
+            </p>
           </div>
         </div>
       </div>

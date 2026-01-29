@@ -1,18 +1,23 @@
-'use client';
+"use client";
 
-import { Fragment, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { X, UserPlus } from 'lucide-react';
-import type { HealthPersonnel } from '@/lib/types/health-personnel';
-import type { Patient } from '@/lib/types/patient';
+import { Fragment, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { X, UserPlus } from "lucide-react";
+import type { HealthPersonnel } from "@/lib/types/health-personnel";
+import type { Patient } from "@/lib/types/patient";
+import type { IbuHamil } from "@/lib/types/ibu-hamil";
 
 interface TransferSinglePatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  patient: Patient | null;
+  patient: Patient | IbuHamil | null;
   sourceNurse: HealthPersonnel | null;
   targetNurses: HealthPersonnel[];
-  onTransfer: (sourcePerawatId: number, ibuHamilId: number, targetPerawatId: number) => Promise<void>;
+  onTransfer: (
+    sourcePerawatId: number,
+    ibuHamilId: number,
+    targetPerawatId: number,
+  ) => Promise<void>;
 }
 
 export function TransferSinglePatientModal({
@@ -35,8 +40,8 @@ export function TransferSinglePatientModal({
       onClose();
       setSelectedNurseId(null);
     } catch (error) {
-      console.error('Transfer failed:', error);
-      alert('Gagal memindahkan pasien. Silakan coba lagi.');
+      console.error("Transfer failed:", error);
+      alert("Gagal memindahkan pasien. Silakan coba lagi.");
     } finally {
       setIsTransferring(false);
     }
@@ -86,15 +91,22 @@ export function TransferSinglePatientModal({
 
                 <div className="mb-6">
                   <p className="text-sm text-gray-600 mb-4">
-                    Pindahkan pasien <span className="font-semibold text-gray-900">{patient?.nama_lengkap}</span> dari{' '}
-                    <span className="font-semibold text-gray-900">{sourceNurse?.name}</span> ke:
+                    Pindahkan pasien{" "}
+                    <span className="font-semibold text-gray-900">
+                      {patient?.nama_lengkap}
+                    </span>{" "}
+                    dari{" "}
+                    <span className="font-semibold text-gray-900">
+                      {sourceNurse?.name}
+                    </span>{" "}
+                    ke:
                   </p>
 
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Pilih Perawat Tujuan
                   </label>
                   <select
-                    value={selectedNurseId || ''}
+                    value={selectedNurseId || ""}
                     onChange={(e) => setSelectedNurseId(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B9ECF] focus:border-transparent"
                   >
@@ -121,7 +133,7 @@ export function TransferSinglePatientModal({
                     className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[#3B9ECF] rounded-lg hover:bg-[#2d7ba8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <UserPlus className="w-4 h-4" />
-                    {isTransferring ? 'Memindahkan...' : 'Pindahkan'}
+                    {isTransferring ? "Memindahkan..." : "Pindahkan"}
                   </button>
                 </div>
               </Dialog.Panel>

@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Home, ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Edit, Trash2, X, User, Calendar, Phone, MapPin, Heart, Baby, FileText, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Home, ChevronRight, AlertTriangle, Plus, Edit, Trash2, X, User, Calendar, Phone, MapPin, Heart, Baby, FileText, ChevronDown } from 'lucide-react';
 import { nurseApi } from '@/lib/api/nurse';
+import { healthRecordsApi } from '@/lib/api/health-records';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,14 +69,6 @@ const mapHealthRecord = (record: any): HealthRecord => ({
   updated_at: record.updated_at,
 });
 
-// Dummy data for self-measurement
-const dummySelfMeasurement = {
-  bloodPressure: { systolic: 145, diastolic: 95, status: 'Hipertensi Tahap 1', trend: 'up' },
-  heartRate: { value: 82, status: 'Normal', trend: 'stable' },
-  bodyTemperature: { value: 36.5, status: 'Normal', trend: 'stable' },
-  weight: { value: 64.2, status: '+0.5kg bulan ini', trend: 'up' },
-};
-
 export default function PerawatPatientDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -86,6 +80,7 @@ export default function PerawatPatientDetailPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [patient, setPatient] = useState<IbuHamil | null>(null);
   const [healthRecords, setHealthRecords] = useState<HealthRecord[]>([]);
+  const [latestRecord, setLatestRecord] = useState<HealthRecord | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<HealthRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
@@ -102,6 +97,7 @@ export default function PerawatPatientDetailPage() {
     }
 
     fetchPatientDetail();
+    fetchLatestHealthRecord();
   }, [token, patientId]);
 
   useEffect(() => {
@@ -140,6 +136,23 @@ export default function PerawatPatientDetailPage() {
       console.error('Failed to fetch health records:', err);
     } finally {
       setIsLoadingRecords(false);
+    }
+  };
+
+  const fetchLatestHealthRecord = async () => {
+    if (!token || !patientId) return;
+
+    try {
+      const data = await nurseApi.getLatestHealthRecord(token, patientId);
+      if (data) {
+        setLatestRecord(mapHealthRecord(data));
+      } else {
+        setLatestRecord(null);
+      }
+    } catch (err: any) {
+      // Jika belum pernah diperiksa atau error lain, jangan blok halaman
+      console.warn('Failed to fetch latest health record:', err?.response?.data || err?.message);
+      setLatestRecord(null);
     }
   };
 
@@ -198,8 +211,8 @@ export default function PerawatPatientDetailPage() {
   };
 
   const getLatestClinicalData = () => {
-    if (healthRecords.length === 0) return null;
-    const latest = healthRecords[0]; // Assuming sorted by date desc
+    const latest = latestRecord || healthRecords[0];
+    if (!latest) return null;
     return {
       protein_urin: latest.protein_urin || '-',
       hemoglobin: latest.hemoglobin,
@@ -230,7 +243,6 @@ export default function PerawatPatientDetailPage() {
           ? {
               ...prev,
               risk_level: updatedRiskLevel,
-              // @ts-expect-error backend field might not be in type yet
               risk_level_set_at: updatedRiskSetAt,
             }
           : prev
@@ -241,6 +253,23 @@ export default function PerawatPatientDetailPage() {
       setRiskUpdateError(err?.response?.data?.message || 'Gagal mengubah level risiko. Silakan coba lagi.');
     } finally {
       setIsUpdatingRisk(false);
+    }
+  };
+
+  const handleDeleteRecord = async (recordId: number) => {
+    if (!token || !confirm('Apakah Anda yakin ingin menghapus riwayat pengecekan ini? Data yang dihapus tidak dapat dikembalikan.')) return;
+
+    try {
+      await healthRecordsApi.deleteHealthRecord(token, recordId);
+      // Close modal
+      setSelectedRecord(null);
+      // Refresh list
+      fetchHealthRecords();
+      // Refresh latest record if needed
+      fetchLatestHealthRecord();
+    } catch (err) {
+      console.error('Failed to delete record:', err);
+      alert('Gagal menghapus data pengecekan.');
     }
   };
 
@@ -619,11 +648,18 @@ export default function PerawatPatientDetailPage() {
                 <p className="mt-1 text-xs text-gray-500">
                   Ringkasan pengukuran mandiri di rumah dan hasil pemeriksaan klinis di puskesmas.
                 </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {latestRecord
+                    ? `Terakhir diperiksa: ${formatDate(latestRecord.checkup_date)}`
+                    : 'Belum ada data pemeriksaan terakhir.'}
+                </p>
               </div>
-              <Button className="bg-[#3B9ECF] hover:bg-[#2d7ba8] text-white text-sm font-medium">
-                <Plus className="w-4 h-4 mr-2" />
-                Input Data Pemeriksaan
-              </Button>
+              <Link href={`/perawat/pasien/${patientId}/pemeriksaan/tambah`}>
+                <Button className="bg-[#3B9ECF] hover:bg-[#2d7ba8] text-white text-sm font-medium">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Input Data Pemeriksaan
+                </Button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -637,65 +673,46 @@ export default function PerawatPatientDetailPage() {
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-2">TEKANAN DARAH</p>
                     <p className="text-xl font-bold text-gray-900 mb-2">
-                      {dummySelfMeasurement.bloodPressure.systolic}/
-                      {dummySelfMeasurement.bloodPressure.diastolic} mmHg
+                      {latestRecord
+                        ? `${latestRecord.blood_pressure_systolic}/${latestRecord.blood_pressure_diastolic} mmHg`
+                        : '-'}
                     </p>
-                    <Badge className="bg-red-100 text-red-800 border-red-200 text-xs mb-2">
-                      {dummySelfMeasurement.bloodPressure.status}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      {dummySelfMeasurement.bloodPressure.trend === 'up' ? (
-                        <TrendingUp className="w-3 h-3 text-red-500" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-green-500" />
-                      )}
-                      <span>Trend</span>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      {latestRecord ? 'Tekanan darah terakhir tercatat.' : 'Belum ada data tekanan darah.'}
+                    </p>
                   </div>
 
                   {/* Detak Jantung */}
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-2">DETAK JANTUNG</p>
                     <p className="text-xl font-bold text-gray-900 mb-2">
-                      {dummySelfMeasurement.heartRate.value} BPM
+                      {latestRecord ? `${latestRecord.heart_rate} BPM` : '-'}
                     </p>
-                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs mb-2">
-                      {dummySelfMeasurement.heartRate.status}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Minus className="w-3 h-3 text-gray-400" />
-                      <span>Stabil</span>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      {latestRecord ? 'Detak jantung ibu dalam pengecekan terakhir.' : 'Belum ada data detak jantung.'}
+                    </p>
                   </div>
 
                   {/* Suhu Tubuh */}
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-2">SUHU TUBUH</p>
                     <p className="text-xl font-bold text-gray-900 mb-2">
-                      {dummySelfMeasurement.bodyTemperature.value}°C
+                      {latestRecord ? `${latestRecord.body_temperature}°C` : '-'}
                     </p>
-                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs mb-2">
-                      {dummySelfMeasurement.bodyTemperature.status}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Minus className="w-3 h-3 text-gray-400" />
-                      <span>Stabil</span>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      {latestRecord ? 'Suhu tubuh saat pemeriksaan terakhir.' : 'Belum ada data suhu tubuh.'}
+                    </p>
                   </div>
 
                   {/* Berat Badan */}
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-2">BERAT BADAN</p>
                     <p className="text-xl font-bold text-gray-900 mb-2">
-                      {dummySelfMeasurement.weight.value} kg
+                      {latestRecord ? `${latestRecord.weight} kg` : '-'}
                     </p>
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs mb-2">
-                      {dummySelfMeasurement.weight.status}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <TrendingUp className="w-3 h-3 text-blue-500" />
-                      <span>Naik</span>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      {latestRecord ? 'Berat badan ibu pada pemeriksaan terakhir.' : 'Belum ada data berat badan.'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -706,20 +723,26 @@ export default function PerawatPatientDetailPage() {
                   Data Pemeriksaan Klinis (Puskesmas)
                 </h3>
                 {latestClinical ? (
-                  <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label className="text-xs text-gray-600">PROTEIN URIN</Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Protein Urin */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">PROTEIN URIN</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.protein_urin}
                       </p>
+                      <p className="text-xs text-gray-500">
+                        Hasil pemeriksaan protein dalam urin.
+                      </p>
                     </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">HEMOGLOBIN (HB)</Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    {/* Hemoglobin */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">HEMOGLOBIN (HB)</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.hemoglobin} g/dL
                       </p>
                       <p
-                        className={`text-xs mt-1 ${
+                        className={`text-xs ${
                           latestClinical.hemoglobinStatus.includes('Anemia')
                             ? 'text-red-600'
                             : 'text-green-600'
@@ -728,19 +751,26 @@ export default function PerawatPatientDetailPage() {
                         {latestClinical.hemoglobinStatus}
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">GULA DARAH (GDS)</Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    {/* Gula Darah */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">GULA DARAH (GDS)</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.blood_glucose} mg/dL
                       </p>
+                      <p className="text-xs text-gray-500">
+                        Kadar gula darah saat pemeriksaan.
+                      </p>
                     </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">DENYUT JANTUNG JANIN (DJJ)</Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    {/* Denyut Jantung Janin */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">DENYUT JANTUNG JANIN (DJJ)</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.fetal_heart_rate} bpm
                       </p>
                       <p
-                        className={`text-xs mt-1 ${
+                        className={`text-xs ${
                           latestClinical.fetalHeartRateStatus.includes('Normal')
                             ? 'text-green-600'
                             : 'text-red-600'
@@ -749,18 +779,26 @@ export default function PerawatPatientDetailPage() {
                         {latestClinical.fetalHeartRateStatus}
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">
-                        LINGKAR LENGAN ATAS (LILA)
-                      </Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    {/* Lingkar Lengan Atas */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">LINGKAR LENGAN ATAS (LILA)</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.upper_arm_circumference} cm
                       </p>
+                      <p className="text-xs text-gray-500">
+                        Ukuran lingkar lengan atas ibu.
+                      </p>
                     </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">TINGGI FUNDUS UTERI (TFU)</Label>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    {/* Tinggi Fundus Uteri */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">TINGGI FUNDUS UTERI (TFU)</p>
+                      <p className="text-xl font-bold text-gray-900 mb-2">
                         {latestClinical.fundal_height} cm
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Tinggi fundus uteri untuk estimasi usia kehamilan.
                       </p>
                     </div>
                   </div>
@@ -926,8 +964,7 @@ export default function PerawatPatientDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    // TODO: Implement edit functionality
-                    console.log('Edit record:', selectedRecord.id);
+                   router.push(`/perawat/pasien/${patientId}/pemeriksaan/${selectedRecord.id}/edit`);
                   }}
                 >
                   <Edit className="w-4 h-4 mr-2" />
@@ -936,12 +973,7 @@ export default function PerawatPatientDetailPage() {
                 <Button
                   variant="outline"
                   className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => {
-                    // TODO: Implement delete functionality
-                    if (confirm('Apakah Anda yakin ingin menghapus riwayat pengecekan ini?')) {
-                      console.log('Delete record:', selectedRecord.id);
-                    }
-                  }}
+                  onClick={() => handleDeleteRecord(selectedRecord.id)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Hapus
