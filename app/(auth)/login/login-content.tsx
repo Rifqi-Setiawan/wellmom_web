@@ -16,6 +16,8 @@ import {
   Building2,
   Stethoscope,
   CheckCircle,
+  AlertCircle,
+  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +33,14 @@ import {
 } from "@/lib/utils/auth-error-handler";
 import axios from "axios";
 
-type LoginTab = "super_admin" | "puskesmas" | "perawat";
+type LoginTab = "super_admin" | "puskesmas" | "perawat" | "kerabat";
 
 const LOGIN_TABS = [
   {
     id: "super_admin" as LoginTab,
     label: "Super Admin",
     icon: Shield,
-    description: "Kementerian Kesehatan",
+    description: "Pemerintah Kota",
   },
   {
     id: "puskesmas" as LoginTab,
@@ -51,6 +53,12 @@ const LOGIN_TABS = [
     label: "Perawat",
     icon: Stethoscope,
     description: "Perawat Puskesmas",
+  },
+  {
+    id: "kerabat" as LoginTab,
+    label: "Kerabat",
+    icon: HeartHandshake,
+    description: "Keluarga & Pendamping",
   },
 ] as const;
 
@@ -132,59 +140,46 @@ export function LoginContent() {
     } catch (error) {
       console.error("❌ Login error:", error);
 
-      // Handle error khusus untuk login puskesmas
-      if (activeTab === "puskesmas") {
-        // Check jika error memiliki status code (dari loginPuskesmas)
-        const errorWithStatus = error as Error & {
-          status?: number;
-          detail?: string;
-        };
-        const status =
-          errorWithStatus.status ||
-          (axios.isAxiosError(error) ? error.response?.status : undefined);
-        const detail =
-          errorWithStatus.detail ||
-          (axios.isAxiosError(error)
-            ? error.response?.data?.detail || error.response?.data?.message
-            : "") ||
-          (error instanceof Error ? error.message : "");
+      // Ekstrak status dan detail dari response API (untuk semua role)
+      const errorWithStatus = error as Error & {
+        status?: number;
+        detail?: string;
+      };
+      const status =
+        errorWithStatus.status ||
+        (axios.isAxiosError(error) ? error.response?.status : undefined);
+      const apiDetail =
+        errorWithStatus.detail ||
+        (axios.isAxiosError(error)
+          ? (error.response?.data?.detail ?? error.response?.data?.message)
+          : undefined) ||
+        (error instanceof Error ? error.message : "");
 
-        console.log("🔍 Puskesmas login error:", { status, detail });
+      const detail =
+        typeof apiDetail === "string" ? apiDetail : String(apiDetail ?? "");
 
-        // Handle 403 (Registration status issues)
-        if (status === 403) {
-          const registrationStatus = detectRegistrationStatus(detail);
-          const redirectPath = getRedirectPath(registrationStatus);
+      // Hanya untuk Puskesmas: redirect 403 (status registrasi)
+      if (activeTab === "puskesmas" && status === 403) {
+        const registrationStatus = detectRegistrationStatus(detail);
+        const redirectPath = getRedirectPath(registrationStatus);
 
-          console.log("📋 Registration status:", registrationStatus);
-          console.log("🔄 Redirect path:", redirectPath);
-
-          if (redirectPath) {
-            // Redirect ke halaman status
-            router.push(redirectPath);
-            return;
-          }
-
-          // Jika deactivated, tampilkan error
-          if (registrationStatus === "deactivated") {
-            setErrorMessage(getErrorMessage(detail, registrationStatus));
-            return;
-          }
+        if (redirectPath) {
+          router.push(redirectPath);
+          return;
         }
-
-        // Handle 401 (Auth errors)
-        if (status === 401) {
-          setErrorMessage(detail || "Nomor telepon atau password salah");
+        if (registrationStatus === "deactivated") {
+          setErrorMessage(getErrorMessage(detail, registrationStatus));
           return;
         }
       }
 
-      // Default error handling
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Login gagal. Silakan coba lagi.",
-      );
+      // Gagal login (401 atau response dengan detail): tampilkan pesan API
+      const displayMessage =
+        detail && detail.trim().length > 0
+          ? detail.trim()
+          : "Login gagal. Periksa kembali alamat surel dan kata sandi Anda.";
+
+      setErrorMessage(displayMessage);
     } finally {
       setIsLoading(false);
     }
@@ -198,11 +193,13 @@ export function LoginContent() {
         return "admin@puskesmas.go.id";
       case "perawat":
         return "perawat@puskesmas.go.id";
+      case "kerabat":
+        return "keluarga@contoh.com";
     }
   };
 
   const getEmailLabel = () => {
-    return "Email Address";
+    return "Alamat Surel";
   };
 
   const getBrandingContent = () => {
@@ -211,19 +208,25 @@ export function LoginContent() {
         return {
           title: "Kelola Sistem WellMom Nasional",
           description:
-            "Portal Super Admin untuk mengelola registrasi puskesmas, monitoring sistem, dan pengawasan data kesehatan ibu hamil secara nasional.",
+            "Portal Super Admin untuk mengelola registrasi puskesmas, pemantauan sistem, dan pengawasan data kesehatan ibu hamil secara terpadu.",
         };
       case "puskesmas":
         return {
-          title: "Digitalizing Public Health for a Better Future.",
+          title: "Transformasi Kesehatan Masyarakat Digital",
           description:
-            "Access the integrated management portal for Puskesmas administrators and health ministry officials.",
+            "Akses portal manajemen terintegrasi bagi administrator puskesmas dan petugas kesehatan daerah.",
         };
       case "perawat":
         return {
-          title: "Monitoring Kesehatan Ibu Hamil",
+          title: "Pemantauan Kesehatan Ibu Hamil",
           description:
-            "Portal perawat untuk input data, monitoring kondisi ibu hamil, dan koordinasi perawatan dengan tim kesehatan.",
+            "Portal perawat untuk pencatatan data, pemantauan kondisi ibu hamil, dan koordinasi perawatan bersama tim kesehatan.",
+        };
+      case "kerabat":
+        return {
+          title: "Pendamping Ibu Hamil",
+          description:
+            "Portal kerabat untuk memantau kesehatan ibu hamil, mendapatkan informasi penting, dan memberikan dukungan terbaik.",
         };
     }
   };
@@ -232,42 +235,50 @@ export function LoginContent() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#3B9ECF] text-white p-12 flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-16">
-            <Image
-              src="/assets/images/logo-wellmom.png"
-              alt="WellMom Logo"
-              width={60}
-              height={60}
-              className="w-12 h-12"
-            />
-            <span className="text-2xl font-bold">WellMom</span>
+      {/* Left Side - Branding (centered logo, gradient + subtle pattern) */}
+      <div
+        className="hidden lg:flex lg:w-1/2 text-white p-12 flex-col items-center justify-center relative overflow-hidden bg-[#3B9ECF]"
+        style={{
+          backgroundImage: `
+            linear-gradient(165deg, #2d7ba8 0%, #3B9ECF 40%, #5ab3e8 100%),
+            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 45%),
+            radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 0%, transparent 60%)
+          `,
+        }}
+      >
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
+            backgroundSize: "32px 32px",
+          }}
+          aria-hidden
+        />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center max-w-sm">
+          <div className="mb-6 flex justify-center">
+            <div className="rounded-2xl bg-white/10 p-4 shadow-xl ring-2 ring-white/20 backdrop-blur-sm">
+              <Image
+                src="/assets/images/logo-wellmom.png"
+                alt="WellMom Logo"
+                width={140}
+                height={140}
+                className="w-28 h-28 md:w-36 md:h-36 object-contain drop-shadow-lg"
+                priority
+              />
+            </div>
           </div>
-
-          <div className="max-w-lg">
-            <h1 className="text-5xl font-bold mb-6 leading-tight">
-              {branding.title}
-            </h1>
-            <p className="text-lg text-white/90">{branding.description}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-white/80">
-          <svg
-            className="w-5 h-5"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span className="text-sm">Secure Government Portal</span>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
+            WellMom
+          </h1>
+          <p className="mt-3 text-base text-white/90 font-medium">
+            {branding.title}
+          </p>
+          <p className="mt-2 text-sm text-white/80 max-w-xs">
+            {branding.description}
+          </p>
         </div>
       </div>
 
@@ -286,12 +297,12 @@ export function LoginContent() {
             <span className="text-2xl font-bold text-[#3B9ECF]">WellMom</span>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome to WellMom
+              Selamat Datang di WellMom
             </h2>
             <p className="text-gray-600">
-              Please select your role and enter your credentials.
+              Pilih peran Anda dan masukkan kredensial untuk masuk ke portal.
             </p>
           </div>
 
@@ -336,7 +347,7 @@ export function LoginContent() {
           {/* Success Message (after registration) */}
           {successMessage && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm text-green-800 font-medium">
                   Registrasi Berhasil!
@@ -347,8 +358,17 @@ export function LoginContent() {
           )}
 
           {errorMessage && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{errorMessage}</p>
+            <div
+              className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/80 p-4 shadow-sm"
+              role="alert"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-red-800">Gagal masuk</p>
+                <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+              </div>
             </div>
           )}
 
@@ -374,15 +394,7 @@ export function LoginContent() {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-[#3B9ECF] hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <Label htmlFor="password">Kata Sandi</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
@@ -422,10 +434,10 @@ export function LoginContent() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging in...
+                  Sedang masuk...
                 </>
               ) : (
-                `Login as ${LOGIN_TABS.find((tab) => tab.id === activeTab)?.label}`
+                `Masuk sebagai ${LOGIN_TABS.find((tab) => tab.id === activeTab)?.label}`
               )}
             </Button>
 
@@ -456,23 +468,6 @@ export function LoginContent() {
               </>
             )}
           </form>
-
-          {/* Footer */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600 mb-4">
-              <Link href="/privacy-policy" className="hover:text-[#3B9ECF]">
-                Privacy Policy
-              </Link>
-              <Link href="/support" className="hover:text-[#3B9ECF]">
-                Support Helpdesk
-              </Link>
-            </div>
-            <p className="text-xs text-gray-500 text-center">
-              © 2024 Ministry of Health Republic of Indonesia.
-              <br />
-              Authorized access only. All activities are monitored.
-            </p>
-          </div>
         </div>
       </div>
     </div>

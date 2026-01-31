@@ -6,17 +6,9 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { authApi } from "@/lib/api/auth";
 import { nurseApi } from "@/lib/api/nurse";
 import Link from "next/link";
-import Image from "next/image";
-import {
-  LayoutDashboard,
-  Users,
-  Settings,
-  LogOut,
-  Home,
-  FileText,
-} from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Home } from "lucide-react";
 import { buildImageUrl } from "@/lib/utils";
-import type { PerawatProfile } from "@/lib/types/perawat";
+import { NavigationLoadingBar } from "@/components/ui/navigation-loading-bar";
 
 export default function PerawatLayout({
   children,
@@ -28,7 +20,13 @@ export default function PerawatLayout({
   const { user, token, isAuthenticated, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Clear navigation loading when pathname changes (new page ready)
+  useEffect(() => {
+    if (isNavigating) setIsNavigating(false);
+  }, [pathname]);
 
   // Wait for Zustand to hydrate from localStorage
   useEffect(() => {
@@ -142,14 +140,25 @@ export default function PerawatLayout({
     },
   ];
 
+  const handleNavClick =
+    (href: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+      const target = href.replace(/\/$/, "");
+      const current = pathname.replace(/\/$/, "");
+      if (current === target || current.startsWith(target + "/")) return;
+      e.preventDefault();
+      setIsNavigating(true);
+      router.push(href);
+    };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <NavigationLoadingBar show={isNavigating} />
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50">
         {/* Profile Section */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white font-semibold text-lg overflow-hidden flex-shrink-0 relative">
+            <div className="w-12 h-12 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white font-semibold text-lg overflow-hidden shrink-0 relative">
               {profilePhoto ? (
                 <img
                   src={buildImageUrl(profilePhoto)}
@@ -188,6 +197,7 @@ export default function PerawatLayout({
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    onClick={handleNavClick(item.href)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
                         ? "bg-[#3B9ECF] text-white"
