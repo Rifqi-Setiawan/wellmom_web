@@ -5,7 +5,6 @@ import type {
   SuperAdminLoginResponse,
   PuskesmasLoginResponse,
   PerawatLoginResponse,
-  KerabatLoginResponse,
   RegisterRequest,
   RegisterResponse,
   UserRole,
@@ -76,37 +75,6 @@ export const authApi = {
     return response.data;
   },
 
-  // Login Kerabat
-  loginKerabat: async (data: LoginRequest): Promise<KerabatLoginResponse> => {
-    // Note: The backend response structure for Kerabat is flat
-    interface RawKerabatLoginResponse {
-      access_token: string;
-      token_type: string;
-      kerabat_id: number;
-      ibu_hamil_id: number;
-      ibu_hamil_name: string;
-      requires_profile_completion: boolean;
-    }
-
-    const response = await api.post<RawKerabatLoginResponse>(
-      '/api/v1/kerabat/login', // Assumed endpoint
-      data
-    );
-
-    // Transform to standard Auth structure
-    return {
-      access_token: response.data.access_token,
-      token_type: response.data.token_type,
-      role: 'kerabat',
-      kerabat: {
-        id: response.data.kerabat_id,
-        ibu_hamil_id: response.data.ibu_hamil_id,
-        ibu_hamil_name: response.data.ibu_hamil_name,
-        requires_profile_completion: response.data.requires_profile_completion,
-      },
-    };
-  },
-
   // Generic login function that routes to correct endpoint based on role
   login: async (role: UserRole, data: LoginRequest): Promise<LoginResponse> => {
     try {
@@ -118,8 +86,6 @@ export const authApi = {
           return await authApi.loginPuskesmas(data);
         case 'perawat':
           return await authApi.loginPerawat(data);
-        case 'kerabat':
-          return await authApi.loginKerabat(data);
         default:
           throw new Error('Invalid role');
       }

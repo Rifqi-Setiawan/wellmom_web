@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Home, ChevronRight, AlertTriangle, Plus, Edit, Trash2, X, User, Calendar, Phone, MapPin, Heart, Baby, FileText, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Home, ChevronRight, AlertTriangle, Plus, Edit, Trash2, X, User, Calendar, Phone, MapPin, Heart, Baby, FileText, ChevronDown, MessageCircle } from 'lucide-react';
 import { nurseApi } from '@/lib/api/nurse';
 import { healthRecordsApi } from '@/lib/api/health-records';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -307,7 +307,7 @@ export default function PerawatPatientDetailPage() {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <Button
           onClick={() => router.back()}
           variant="outline"
@@ -315,6 +315,15 @@ export default function PerawatPatientDetailPage() {
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Kembali
+        </Button>
+        <Button
+          onClick={() => router.push(`/perawat/chat?ibu_hamil_id=${patient.id}`)}
+          variant="outline"
+          className="mb-4 text-emerald-600 border-emerald-600 hover:bg-emerald-600 hover:text-white"
+          title="Chat dengan ibu hamil"
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Chat
         </Button>
         
         {/* Breadcrumb */}

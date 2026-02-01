@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { nurseApi } from '@/lib/api/nurse';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -217,6 +217,20 @@ export default function PerawatPatientListPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          <p className="font-medium">Gagal memuat data pasien</p>
+          <p className="text-sm mt-1">{error}</p>
+          <Button variant="outline" className="mt-3" onClick={() => { setError(null); fetchPatients(); }}>
+            Coba lagi
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -380,14 +394,25 @@ export default function PerawatPatientListPage() {
                           </p>
                         </td>
                         <td className="py-4 px-6">
-                          <Button
-                            onClick={() => router.push(`/perawat/pasien/${patient.id}`)}
-                            variant="outline"
-                            className="text-[#3B9ECF] border-[#3B9ECF] hover:bg-[#3B9ECF] hover:text-white"
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Lihat Detail
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => router.push(`/perawat/pasien/${patient.id}`)}
+                              variant="outline"
+                              className="text-[#3B9ECF] border-[#3B9ECF] hover:bg-[#3B9ECF] hover:text-white"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Lihat Detail
+                            </Button>
+                            <Button
+                              onClick={() => router.push(`/perawat/chat?ibu_hamil_id=${patient.id}`)}
+                              variant="outline"
+                              className="text-emerald-600 border-emerald-600 hover:bg-emerald-600 hover:text-white"
+                              title="Chat dengan ibu hamil"
+                            >
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Chat
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );

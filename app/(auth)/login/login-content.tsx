@@ -17,7 +17,6 @@ import {
   Stethoscope,
   CheckCircle,
   AlertCircle,
-  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +32,7 @@ import {
 } from "@/lib/utils/auth-error-handler";
 import axios from "axios";
 
-type LoginTab = "super_admin" | "puskesmas" | "perawat" | "kerabat";
+type LoginTab = "super_admin" | "puskesmas" | "perawat";
 
 const LOGIN_TABS = [
   {
@@ -53,12 +52,6 @@ const LOGIN_TABS = [
     label: "Perawat",
     icon: Stethoscope,
     description: "Perawat Puskesmas",
-  },
-  {
-    id: "kerabat" as LoginTab,
-    label: "Kerabat",
-    icon: HeartHandshake,
-    description: "Keluarga & Pendamping",
   },
 ] as const;
 
@@ -193,8 +186,6 @@ export function LoginContent() {
         return "admin@puskesmas.go.id";
       case "perawat":
         return "perawat@puskesmas.go.id";
-      case "kerabat":
-        return "keluarga@contoh.com";
     }
   };
 
@@ -221,12 +212,6 @@ export function LoginContent() {
           title: "Pemantauan Kesehatan Ibu Hamil",
           description:
             "Portal perawat untuk pencatatan data, pemantauan kondisi ibu hamil, dan koordinasi perawatan bersama tim kesehatan.",
-        };
-      case "kerabat":
-        return {
-          title: "Pendamping Ibu Hamil",
-          description:
-            "Portal kerabat untuk memantau kesehatan ibu hamil, mendapatkan informasi penting, dan memberikan dukungan terbaik.",
         };
     }
   };

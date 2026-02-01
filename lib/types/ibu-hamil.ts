@@ -13,6 +13,12 @@ export interface IbuHamil {
   kelurahan: string;
   kecamatan: string;
   is_active: boolean;
+  /** Dari API daftar pasien (by-puskesmas): level risiko ibu hamil */
+  risk_level?: 'rendah' | 'sedang' | 'tinggi' | null;
+  /** Dari API daftar pasien: perawat yang menangani */
+  perawat_id?: number | null;
+  /** Dari API daftar pasien: usia (tahun) */
+  age?: number;
 }
 
 export interface IbuHamilProfileResponse {

@@ -66,13 +66,8 @@ export const ROUTES = {
       RIWAYAT: (id: string | number) => `/perawat/pasien/${id}/riwayat`,
     },
     JADWAL: '/perawat/jadwal',
+    CHAT: '/perawat/chat',
     PROFILE: '/perawat/profile',
-  },
-
-  // Kerabat routes
-  KERABAT: {
-    DASHBOARD: '/kerabat/dashboard',
-    PROFILE: '/kerabat/profile',
   },
 
   // Ibu Hamil routes
@@ -85,12 +80,11 @@ export const ROUTES = {
 /**
  * Get dashboard route based on user role
  */
-export function getDashboardRoute(role: 'super_admin' | 'puskesmas' | 'perawat' | 'kerabat' | 'ibu_hamil'): string {
+export function getDashboardRoute(role: 'super_admin' | 'puskesmas' | 'perawat' | 'ibu_hamil'): string {
   const roleRoutes = {
     super_admin: ROUTES.SUPER_ADMIN.DASHBOARD,
     puskesmas: ROUTES.PUSKESMAS.DASHBOARD,
     perawat: ROUTES.PERAWAT.DASHBOARD,
-    kerabat: ROUTES.KERABAT.DASHBOARD,
     ibu_hamil: ROUTES.IBU_HAMIL.DASHBOARD,
   };
 
@@ -100,12 +94,11 @@ export function getDashboardRoute(role: 'super_admin' | 'puskesmas' | 'perawat' 
 /**
  * Check if path matches a role's routes
  */
-export function isRolePath(path: string, role: 'super_admin' | 'puskesmas' | 'perawat' | 'kerabat' | 'ibu_hamil'): boolean {
+export function isRolePath(path: string, role: 'super_admin' | 'puskesmas' | 'perawat' | 'ibu_hamil'): boolean {
   const rolePrefix = {
     super_admin: '/super-admin',
     puskesmas: '/puskesmas',
     perawat: '/perawat',
-    kerabat: '/kerabat',
     ibu_hamil: '/ibu-hamil',
   };
 

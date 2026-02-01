@@ -5,7 +5,6 @@ import type {
   User,
   PuskesmasInfo,
   PerawatInfo,
-  KerabatInfo,
   LoginResponse,
 } from '@/lib/types/auth';
 
@@ -18,7 +17,6 @@ interface AuthState {
   token: string | null;
   puskesmasInfo: PuskesmasInfo | null;
   perawatInfo: PerawatInfo | null;
-  kerabatInfo: KerabatInfo | null;
   isAuthenticated: boolean;
   setAuth: (response: LoginResponse) => void;
   clearAuth: () => void;
@@ -31,29 +29,15 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       puskesmasInfo: null,
       perawatInfo: null,
-      kerabatInfo: null,
       isAuthenticated: false,
       setAuth: (response) => {
-        let authUser: AuthUser;
-
-        if (response.role === 'kerabat') {
-          // Kerabat response has no 'user' object, construct one
-          authUser = {
-            id: response.kerabat.id,
-            email: 'kerabat@wellmom.local', // Placeholder
-            full_name: response.kerabat.ibu_hamil_name + ' (Kerabat)', // Descriptive name
-            role: 'kerabat',
-          };
-        } else {
-          authUser = {
-            ...response.user,
-            role: response.role,
-          };
-        }
+        const authUser: AuthUser = {
+          ...response.user,
+          role: response.role,
+        };
 
         const puskesmasInfo = 'puskesmas' in response ? response.puskesmas : null;
         const perawatInfo = 'perawat' in response ? response.perawat : null;
-        const kerabatInfo = 'kerabat' in response ? response.kerabat : null;
 
         console.log('🔐 Setting auth state:', {
           role: response.role,
@@ -61,7 +45,6 @@ export const useAuthStore = create<AuthState>()(
           hasToken: !!response.access_token,
           puskesmasInfo: puskesmasInfo,
           perawatInfo: perawatInfo,
-          kerabatInfo: kerabatInfo,
         });
 
         set({
@@ -69,7 +52,6 @@ export const useAuthStore = create<AuthState>()(
           token: response.access_token,
           puskesmasInfo: puskesmasInfo,
           perawatInfo: perawatInfo,
-          kerabatInfo: kerabatInfo,
           isAuthenticated: true,
         });
 
@@ -78,7 +60,6 @@ export const useAuthStore = create<AuthState>()(
           hasToken: !!response.access_token,
           puskesmasInfo: puskesmasInfo,
           perawatInfo: perawatInfo,
-          kerabatInfo: kerabatInfo,
         });
       },
       clearAuth: () =>
@@ -87,7 +68,6 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           puskesmasInfo: null,
           perawatInfo: null,
-          kerabatInfo: null,
           isAuthenticated: false,
         }),
     }),
