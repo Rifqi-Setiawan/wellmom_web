@@ -303,129 +303,132 @@ export default function PerawatPatientDetailPage() {
 
   const riskBadge = getRiskBadge(patient.risk_level);
   const latestClinical = getLatestClinicalData();
+  const riskUpdatedAt = (patient as { risk_level_set_at?: string | null })?.risk_level_set_at ?? null;
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+    <div className="p-6 md:p-8 max-w-6xl mx-auto">
+      {/* Baris 1: Hanya tombol Kembali */}
+      <div className="mb-5">
         <Button
           onClick={() => router.back()}
           variant="outline"
-          className="mb-4"
+          size="sm"
+          className="gap-1.5"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4" />
           Kembali
         </Button>
-        <Button
-          onClick={() => router.push(`/perawat/chat?ibu_hamil_id=${patient.id}`)}
-          variant="outline"
-          className="mb-4 text-emerald-600 border-emerald-600 hover:bg-emerald-600 hover:text-white"
-          title="Chat dengan ibu hamil"
-        >
-          <MessageCircle className="w-4 h-4 mr-2" />
-          Chat
-        </Button>
-        
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <Home className="w-4 h-4" />
-          <ChevronRight className="w-4 h-4" />
-          <span>Daftar Pasien</span>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-gray-900 font-medium">Detail Kesehatan Pasien</span>
-        </div>
+      </div>
 
-        {/* Patient Info and Risk Badge */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white text-xl font-semibold">
-              {patient.nama_lengkap.charAt(0)}
+      {/* Baris 2: Informasi header pasien — kiri: info pasien, kanan: Chat & Menentukan Risiko */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 md:p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          {/* Kiri: informasi pasien (avatar, nama, NIK, usia, alamat) */}
+          <div className="flex items-start gap-4 min-w-0 flex-1">
+            <div className="w-16 h-16 bg-[#3B9ECF] rounded-full flex items-center justify-center text-white text-xl font-semibold shrink-0">
+              {patient.nama_lengkap.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">{patient.nama_lengkap}</h1>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>NIK: {patient.nik}</span>
-                <span>•</span>
-                <span>{patient.age} Thn</span>
-                <span>•</span>
-                <span>{patient.address}</span>
-              </div>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                {patient.nama_lengkap}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                NIK {patient.nik}
+              </p>
+              <p className="text-sm text-gray-600 mt-0.5">
+                {patient.age != null ? `${patient.age} tahun` : '—'}
+                <span className="mx-1.5 text-gray-400">·</span>
+                <span className="line-clamp-2">{patient.address}</span>
+              </p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="relative inline-block text-left mb-2">
-              <button
-                type="button"
-                disabled={isUpdatingRisk}
-                onClick={() => setIsRiskMenuOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3B9ECF] bg-white ${riskBadge.className} ${isUpdatingRisk ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+
+          {/* Kanan: tombol Chat dan tombol Menentukan Risiko */}
+          <div className="flex flex-col items-stretch sm:items-end gap-4 shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => router.push(`/perawat/chat?ibu_hamil_id=${patient.id}`)}
+                variant="outline"
+                className="h-[42px] px-4 py-2.5 rounded-lg text-sm font-semibold text-emerald-600 border-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 gap-2"
+                title="Chat dengan ibu hamil"
               >
-                <span>{riskBadge.label}</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {isRiskMenuOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 border border-gray-100">
-                  <div className="py-2">
-                    <p className="px-4 pb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Ubah Level Risiko
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleRiskLevelChange('rendah')}
-                      className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-green-50 text-gray-800"
-                    >
-                      <span>Risiko Rendah</span>
-                      <span className="inline-flex items-center">
-                        <span className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-                        <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">
-                          RENDAH
-                        </Badge>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRiskLevelChange('sedang')}
-                      className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-orange-50 text-gray-800"
-                    >
-                      <span>Risiko Sedang</span>
-                      <span className="inline-flex items-center">
-                        <span className="w-2 h-2 rounded-full bg-orange-500 mr-2" />
-                        <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-[10px]">
-                          SEDANG
-                        </Badge>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRiskLevelChange('tinggi')}
-                      className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-red-50 text-gray-800"
-                    >
-                      <span>Risiko Tinggi</span>
-                      <span className="inline-flex items-center">
-                        <span className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-                        <Badge className="bg-red-100 text-red-800 border-red-200 text-[10px]">
-                          TINGGI
-                        </Badge>
-                      </span>
-                    </button>
+                <MessageCircle className="w-4 h-4" />
+                Chat
+              </Button>
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled={isUpdatingRisk}
+                  onClick={() => setIsRiskMenuOpen((prev) => !prev)}
+                  className={`h-[42px] inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3B9ECF] w-full sm:w-auto justify-center ${riskBadge.className} ${isUpdatingRisk ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
+                >
+                  <span>{riskBadge.label}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                {isRiskMenuOpen && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 border border-gray-100">
+                    <div className="py-2">
+                      <p className="px-4 pb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Ubah Level Risiko
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleRiskLevelChange('rendah')}
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-green-50 text-gray-800"
+                      >
+                        <span>Risiko Rendah</span>
+                        <span className="inline-flex items-center">
+                          <span className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                          <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">
+                            RENDAH
+                          </Badge>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRiskLevelChange('sedang')}
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-orange-50 text-gray-800"
+                      >
+                        <span>Risiko Sedang</span>
+                        <span className="inline-flex items-center">
+                          <span className="w-2 h-2 rounded-full bg-orange-500 mr-2" />
+                          <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-[10px]">
+                            SEDANG
+                          </Badge>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRiskLevelChange('tinggi')}
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-red-50 text-gray-800"
+                      >
+                        <span>Risiko Tinggi</span>
+                        <span className="inline-flex items-center">
+                          <span className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+                          <Badge className="bg-red-100 text-red-800 border-red-200 text-[10px]">
+                            TINGGI
+                          </Badge>
+                        </span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-
             {riskUpdateError && (
-              <p className="text-xs text-red-500 mb-1 max-w-xs ml-auto text-right">{riskUpdateError}</p>
+              <p className="text-xs text-red-500 text-left sm:text-right">
+                {riskUpdateError}
+              </p>
             )}
-
-            <p className="text-xs text-gray-500">
-              UPDATE: {formatDateTime((patient as any).risk_level_set_at || null)}
+            <p className="text-xs text-gray-500 text-left sm:text-right">
+              Terakhir diperbarui: {riskUpdatedAt ? formatDateTime(riskUpdatedAt) : '—'}
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200 mb-6">
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-gray-200 mb-6">
           <button
             onClick={() => setActiveTab('current')}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -447,7 +450,6 @@ export default function PerawatPatientDetailPage() {
             Riwayat Pengecekan
           </button>
         </div>
-      </div>
 
       {/* Tab Content */}
       {activeTab === 'current' ? (

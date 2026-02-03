@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { authApi } from "@/lib/api/auth";
 import { nurseApi } from "@/lib/api/nurse";
 import Link from "next/link";
-import { LayoutDashboard, Users, Settings, LogOut, Home, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Home, MessageCircle, MessageSquareText } from "lucide-react";
 import { buildImageUrl } from "@/lib/utils";
 import { NavigationLoadingBar } from "@/components/ui/navigation-loading-bar";
 
@@ -132,6 +132,11 @@ export default function PerawatLayout({
       href: "/perawat/pasien",
       label: "Daftar Pasien",
       icon: Users,
+    },
+    {
+      href: "/perawat/forum",
+      label: "Forum Diskusi",
+      icon: MessageSquareText,
     },
     {
       href: "/perawat/chat",

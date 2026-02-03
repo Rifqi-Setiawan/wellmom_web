@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import { Camera, Image as ImageIcon, Loader2, X } from "lucide-react";
 import { cn, buildImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,23 @@ interface PhotoUploaderProps {
   currentPhoto?: string;
   onPhotoChange: (file: File) => Promise<void>;
   isUploading?: boolean;
+  /** Hanya tampilkan lingkaran foto + ikon kamera (untuk layout memanjang) */
+  compact?: boolean;
 }
 
-export function PhotoUploader({
-  currentPhoto,
-  onPhotoChange,
-  isUploading = false,
-}: PhotoUploaderProps) {
+export const PhotoUploader = forwardRef<
+  { triggerClick: () => void },
+  PhotoUploaderProps
+>(function PhotoUploader(
+  { currentPhoto, onPhotoChange, isUploading = false, compact = false },
+  ref,
+) {
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    triggerClick: () => fileInputRef.current?.click(),
+  }));
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,15 +62,15 @@ export function PhotoUploader({
 
   const displaySrc = preview || buildImageUrl(currentPhoto);
 
-  return (
-    <div className="flex items-center gap-6">
-      <div className="relative group">
-        <div
-          className={cn(
-            "w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50",
-            isUploading && "opacity-50",
-          )}
-        >
+  const photoCircle = (
+    <div className="relative shrink-0">
+      <div
+        className={cn(
+          "rounded-full overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50",
+          compact ? "w-20 h-20 md:w-24 md:h-24" : "w-24 h-24",
+          isUploading && "opacity-50",
+        )}
+      >
           {displaySrc && displaySrc !== "/default-avatar.png" ? (
             <img
               src={displaySrc}
@@ -84,16 +92,35 @@ export function PhotoUploader({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleTriggerClick}
-          disabled={isUploading}
-          className="absolute bottom-0 right-0 p-1.5 bg-[#3B9ECF] text-white rounded-full shadow-lg hover:bg-[#2d7ba8] transition-colors disabled:opacity-50"
-        >
-          <Camera className="w-4 h-4" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleTriggerClick}
+        disabled={isUploading}
+        className="absolute bottom-0 right-0 p-1.5 bg-[#3B9ECF] text-white rounded-full shadow-lg hover:bg-[#2d7ba8] transition-colors disabled:opacity-50"
+      >
+        <Camera className="w-4 h-4" />
+      </button>
+    </div>
+  );
 
+  if (compact) {
+    return (
+      <>
+        {photoCircle}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png, image/jpeg, image/jpg"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-6">
+      {photoCircle}
       <div className="flex-1">
         <h3 className="text-sm font-medium text-gray-900 mb-1">Foto Profil</h3>
         <p className="text-xs text-gray-500 mb-3">
@@ -137,4 +164,4 @@ export function PhotoUploader({
       </div>
     </div>
   );
-}
+});

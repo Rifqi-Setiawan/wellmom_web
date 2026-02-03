@@ -138,7 +138,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8 pb-20">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full max-w-[1400px] mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -160,9 +160,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Tabs & Content Layout */}
-        <div className="flex flex-col md:flex-row gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
           {/* Sidebar Navigation */}
-          <nav className="w-full md:w-64 flex flex-row md:flex-col gap-1 bg-white p-2 rounded-xl border border-gray-200 shadow-sm sticky top-6 overflow-x-auto">
+          <nav className="w-full lg:w-56 xl:w-64 flex flex-row lg:flex-col gap-1 bg-white p-2 rounded-xl border border-gray-200 shadow-sm lg:sticky lg:top-6 overflow-x-auto shrink-0">
             <button
               onClick={() => setActiveTab("profile")}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
@@ -198,8 +198,8 @@ export default function SettingsPage() {
             </button>
           </nav>
 
-          {/* Content Area */}
-          <main className="flex-1 min-w-0">
+          {/* Content Area - uses remaining width */}
+          <main className="flex-1 min-w-0 w-full">
             {activeTab === "profile" && (
               <ProfileTab
                 profile={profile}

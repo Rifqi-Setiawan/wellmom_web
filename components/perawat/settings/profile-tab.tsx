@@ -2,15 +2,13 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
-import { Loader2, Save, User, Phone, Briefcase, MapPin, Mail, Calendar, Clock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Save, User, Briefcase, MapPin, Mail, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StatCard } from "./stat-card";
+import { Badge } from "@/components/ui/badge";
 import { PhotoUploader } from "./photo-uploader";
 import { profileUpdateSchema } from "@/lib/schemas/perawat-profile";
 import type { PerawatProfile } from "@/lib/types/perawat";
@@ -46,6 +44,8 @@ export function ProfileTab({
     }
   });
 
+  const photoUploaderRef = useRef<{ triggerClick: () => void }>(null);
+
   useEffect(() => {
     if (profile) {
       reset({
@@ -63,52 +63,54 @@ export function ProfileTab({
     );
   }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "-";
-    return format(new Date(dateString), "d MMM yyyy", { locale: id });
-  };
-
   return (
-    <div className="space-y-8">
-      {/* 1. Photo & Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <PhotoUploader 
-            currentPhoto={profile.profile_photo_url} 
+    <div className="space-y-6">
+      {/* 1. Kartu profil memanjang: foto kiri, info + tag Pasien Aktif + Puskesmas, tombol Ganti Foto */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          <PhotoUploader
+            ref={photoUploaderRef}
+            currentPhoto={profile.profile_photo_url}
             onPhotoChange={onUploadPhoto}
             isUploading={isUploadingPhoto}
+            compact
           />
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col gap-4">
-           <h3 className="text-sm font-semibold text-gray-700">Statistik Cepat</h3>
-           <StatCard 
-             title="Pasien Aktif" 
-             value={profile.current_patients} 
-             color="blue" 
-             icon={User}
-           />
-           <div className="grid grid-cols-2 gap-2">
-             <StatCard 
-               title="Bergabung" 
-               value={formatDate(profile.created_at)} 
-               color="gray" 
-               className="text-sm"
-             />
-             <StatCard 
-                title="Diupdate" 
-                value={formatDate(profile.updated_at)} 
-                color="gray" 
-                className="text-sm"
-             />
-           </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900">Profil Pengguna</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Perbarui foto dan detail identitas Anda di sini.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <Badge className="bg-blue-50 text-[#3B9ECF] border-blue-200 font-medium">
+                AKTIF
+              </Badge>
+              <Badge variant="secondary" className="font-medium">
+                {profile.current_patients} Pasien Aktif
+              </Badge>
+              {profile.puskesmas?.name && (
+                <Badge variant="outline" className="text-gray-600 font-normal">
+                  {profile.puskesmas.name}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => photoUploaderRef.current?.triggerClick()}
+            disabled={isUploadingPhoto}
+            className="shrink-0 gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Ganti Foto
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 2. Personal Information Form */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 md:p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
               <User className="w-5 h-5 text-[#3B9ECF]" />
               Informasi Personal
@@ -188,7 +190,7 @@ export function ProfileTab({
 
         {/* 3. Puskesmas Info (Read Only) */}
         <div>
-           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm sticky top-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 md:p-6 shadow-sm lg:sticky lg:top-6">
              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-[#3B9ECF]" />
                 Info Puskesmas
