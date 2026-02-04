@@ -33,6 +33,24 @@ export interface IbuHamil {
   jumlah_anak?: number;
   /** Jarak kehamilan terakhir */
   jarak_kehamilan_terakhir?: string;
+  /** Riwayat medis - Darah Tinggi */
+  darah_tinggi?: boolean;
+  /** Riwayat medis - Diabetes */
+  diabetes?: boolean;
+  /** Riwayat medis - Anemia */
+  anemia?: boolean;
+  /** Riwayat medis - Penyakit Jantung */
+  penyakit_jantung?: boolean;
+  /** Riwayat medis - Asma */
+  asma?: boolean;
+  /** Riwayat medis - Penyakit Ginjal */
+  penyakit_ginjal?: boolean;
+  /** Riwayat medis - TBC/Malaria */
+  tbc_malaria?: boolean;
+  /** Riwayat medis - Pernah Caesar */
+  pernah_caesar?: boolean;
+  /** Riwayat perdarahan saat hamil */
+  pernah_perdarahan_saat_hamil?: boolean;
 }
 
 export interface IbuHamilProfileResponse {
