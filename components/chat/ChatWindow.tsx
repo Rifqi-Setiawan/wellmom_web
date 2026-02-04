@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConversation } from '@/hooks/use-chat';
+import { useChatStore } from '@/lib/stores/chat-store';
 import { nurseApi } from '@/lib/api/nurse';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -28,7 +29,15 @@ export function ChatWindow({
     sendMessage,
   } = useConversation(conversation.id, authToken);
 
+  const markAsRead = useChatStore((s) => s.markAsRead);
   const [fetchedName, setFetchedName] = useState<string | null>(null);
+
+  // Mark messages as read when chat is opened
+  useEffect(() => {
+    if (conversation.unread_count > 0 && messages.length > 0) {
+      markAsRead(conversation.id);
+    }
+  }, [conversation.id, conversation.unread_count, messages.length, markAsRead]);
 
   /** Nama ibu hamil: dari API chat jika ada, else dari API daftar pasien (getIbuHamilDetail) */
   useEffect(() => {
@@ -64,8 +73,18 @@ export function ChatWindow({
       {/* Header: nama ibu hamil (sesuai Swagger, tanpa status online/offline) */}
       <header
         data-chat-header
-        className="shrink-0 px-6 py-4 border-b border-gray-200 bg-white shadow-sm"
+        className={`shrink-0 px-6 py-4 border-b bg-white shadow-sm relative ${
+          conversation.unread_count > 0 ? 'border-red-300' : 'border-gray-200'
+        }`}
       >
+        {/* Bar merah indikator unread messages */}
+        {conversation.unread_count > 0 && (
+          <div 
+            className="absolute top-0 left-0 right-0 h-1 bg-red-500"
+            aria-label={`${conversation.unread_count} pesan belum dibaca`}
+            title={`${conversation.unread_count} pesan belum dibaca`}
+          />
+        )}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-full bg-[#3B9ECF] flex items-center justify-center text-white font-semibold text-lg shrink-0">
@@ -75,8 +94,23 @@ export function ChatWindow({
               <h1 className="font-semibold text-gray-900 text-lg truncate">
                 {displayName}
               </h1>
+              {conversation.unread_count > 0 && (
+                <p className="text-xs text-red-600 mt-0.5">
+                  {conversation.unread_count} pesan belum dibaca
+                </p>
+              )}
             </div>
           </div>
+          {conversation.unread_count > 0 && (
+            <div className="flex items-center gap-2">
+              <span
+                aria-label={`${conversation.unread_count} belum dibaca`}
+                className="inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full text-xs font-medium bg-red-500 text-white"
+              >
+                {conversation.unread_count}
+              </span>
+            </div>
+          )}
         </div>
 
         {error && (
