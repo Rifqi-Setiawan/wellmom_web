@@ -318,15 +318,6 @@ export function PatientOverview({ statistics }: PatientOverviewProps) {
               </div>
             )}
           </div>
-
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              className="text-[#3B9ECF] text-xs font-medium"
-            >
-              Lihat Semua Daftar Tunggu
-            </Button>
-          </div>
         </div>
 
         {/* Column 3: Pasien Perlu Perhatian (risk_level tinggi) */}

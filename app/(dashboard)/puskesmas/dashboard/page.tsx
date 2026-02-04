@@ -5,7 +5,6 @@ import Link from "next/link";
 import { 
   Users, 
   UserCheck, 
-  Activity, 
   Calendar,
   ArrowRight,
   Baby
@@ -62,9 +61,9 @@ export default function PuskesmasDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {/* Card 1: Perawat */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-7 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-100 text-[#3B9ECF] rounded-lg">
               <UserCheck className="w-6 h-6" />
@@ -86,7 +85,7 @@ export default function PuskesmasDashboard() {
         </div>
 
         {/* Card 2: Ibu Hamil */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-7 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-pink-100 text-pink-600 rounded-lg">
               <Baby className="w-6 h-6" />
@@ -104,22 +103,8 @@ export default function PuskesmasDashboard() {
           </Link>
         </div>
 
-        {/* Card 3: Pemeriksaan Hari Ini */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
-              <Activity className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">
-            {statistics?.pemeriksaan_hari_ini || 0}
-          </h3>
-          <p className="text-sm text-gray-500 mb-4">Pemeriksaan Hari Ini</p>
-          <span className="text-sm text-gray-400">Update: Hari ini</span>
-        </div>
-
-        {/* Card 4: Pasien Belum Ditugaskan */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        {/* Card 3: Pasien Belum Ditugaskan */}
+        <div className="bg-white p-7 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-red-100 text-red-600 rounded-lg">
               <UserCheck className="w-6 h-6" />
