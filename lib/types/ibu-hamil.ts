@@ -19,6 +19,20 @@ export interface IbuHamil {
   perawat_id?: number | null;
   /** Dari API daftar pasien: usia (tahun) */
   age?: number;
+  /** Golongan darah */
+  blood_type?: string;
+  /** Hari Pertama Haid Terakhir */
+  last_menstrual_period?: string;
+  /** Hari Perkiraan Lahir */
+  estimated_due_date?: string;
+  /** Usia kehamilan dalam minggu */
+  usia_kehamilan?: number;
+  /** Kehamilan ke berapa */
+  kehamilan_ke?: number;
+  /** Jumlah anak */
+  jumlah_anak?: number;
+  /** Jarak kehamilan terakhir */
+  jarak_kehamilan_terakhir?: string;
 }
 
 export interface IbuHamilProfileResponse {

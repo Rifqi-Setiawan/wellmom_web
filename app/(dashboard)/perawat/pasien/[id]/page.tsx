@@ -156,7 +156,7 @@ export default function PerawatPatientDetailPage() {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
@@ -166,7 +166,7 @@ export default function PerawatPatientDetailPage() {
     });
   };
 
-  const formatDateTime = (dateString: string | null) => {
+  const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleString('id-ID', {

@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=https://wellmom-innovilage.com/api
+        - NEXT_PUBLIC_WS_BASE_URL=wss://wellmom-innovilage.com/ws
+    container_name: wellmom_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://wellmom-innovilage.com/api
+      - NEXT_PUBLIC_WS_BASE_URL=wss://wellmom-innovilage.com/ws
+    restart: unless-stopped
