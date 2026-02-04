@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'WellMom - Admin Portal',
@@ -10,5 +11,10 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <Toaster />
+    </>
+  );
 }

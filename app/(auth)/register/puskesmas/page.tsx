@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileUpload } from "@/components/forms/file-upload";
 import { InteractiveMap } from "@/components/maps/interactive-map";
-import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { puskesmasRegistrationApi } from "@/lib/api/puskesmas-registration";
+import { useToast } from "@/hooks/use-toast";
 
 interface RegistrationData {
   name: string;
@@ -35,6 +36,24 @@ interface FileData {
   building_photo: File | null;
 }
 
+// Interface untuk field-level errors
+interface FieldErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+  address?: string;
+  kepala_name?: string;
+  kepala_nip?: string;
+  npwp?: string;
+  sk_document?: string;
+  npwp_document?: string;
+  building_photo?: string;
+  latitude?: string;
+  longitude?: string;
+  data_truth_confirmed?: string;
+}
+
 const steps = [
   { id: 1, title: "Data Puskesmas" },
   { id: 2, title: "Legalitas & Dokumen" },
@@ -44,10 +63,13 @@ const steps = [
 
 export default function PuskesmasRegistrationPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [puskesmasId, setPuskesmasId] = useState<number | null>(null); // Simpan ID dari Step 1
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]); // Track step yang sudah selesai
   const [formData, setFormData] = useState<RegistrationData>({
     name: "",
     email: "",
@@ -91,87 +113,289 @@ export default function PuskesmasRegistrationPage() {
 
   const updateFile = (field: keyof FileData, file: File | null) => {
     setFiles((prev) => ({ ...prev, [field]: file }));
+    // Clear error when file is selected
+    if (file) {
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  // Validasi Step 1
+  // Helper function to clear field error
+  const clearFieldError = (field: keyof FieldErrors) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  // Helper function to set field error
+  const setFieldError = (field: keyof FieldErrors, message: string) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
+  };
+
+  // Fungsi untuk mengecek apakah bisa navigasi ke step tertentu
+  const canNavigateToStep = (targetStep: number): boolean => {
+    // Selalu bisa ke step 1
+    if (targetStep === 1) return true;
+    
+    // Untuk step 2, harus sudah selesai step 1
+    if (targetStep === 2) {
+      return completedSteps.includes(1);
+    }
+    
+    // Untuk step 3, harus sudah selesai step 1 dan 2
+    if (targetStep === 3) {
+      return completedSteps.includes(1) && completedSteps.includes(2);
+    }
+    
+    // Untuk step 4, harus sudah selesai step 1, 2, dan 3
+    if (targetStep === 4) {
+      return completedSteps.includes(1) && completedSteps.includes(2) && completedSteps.includes(3);
+    }
+    
+    return false;
+  };
+
+  // Handler untuk navigasi step dari stepper
+  const handleStepNavigation = (targetStep: number) => {
+    // Jika target step sama dengan current step, tidak perlu navigasi
+    if (targetStep === currentStep) return;
+    
+    // Jika target step lebih kecil dari current step, selalu bisa (backward navigation)
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      return;
+    }
+    
+    // Jika target step lebih besar, cek apakah bisa navigasi
+    if (!canNavigateToStep(targetStep)) {
+      toast({
+        variant: "destructive",
+        title: "Tidak Dapat Melanjutkan",
+        description: `Silakan lengkapi tahap ${targetStep - 1} terlebih dahulu sebelum melanjutkan ke tahap ${targetStep}.`,
+      });
+      return;
+    }
+    
+    // Jika bisa, navigasi ke step tersebut
+    setCurrentStep(targetStep);
+  };
+
+  // Validasi Step 1 dengan field-level errors
   const validateStep1 = (): boolean => {
-    if (!formData.name || formData.name.length < 3 || formData.name.length > 255) {
-      setErrorMessage("Nama Puskesmas harus 3-255 karakter");
-      return false;
+    const errors: FieldErrors = {};
+    let isValid = true;
+
+    // Validasi Nama Puskesmas
+    if (!formData.name || formData.name.trim().length === 0) {
+      errors.name = "Nama Puskesmas wajib diisi";
+      isValid = false;
+    } else if (formData.name.trim().length < 3) {
+      errors.name = "Nama Puskesmas minimal 3 karakter";
+      isValid = false;
+    } else if (formData.name.length > 255) {
+      errors.name = "Nama Puskesmas maksimal 255 karakter";
+      isValid = false;
     }
-    if (!formData.address || formData.address.length < 5) {
-      setErrorMessage("Alamat harus minimal 5 karakter");
-      return false;
+
+    // Validasi Alamat
+    if (!formData.address || formData.address.trim().length === 0) {
+      errors.address = "Alamat wajib diisi";
+      isValid = false;
+    } else if (formData.address.trim().length < 10) {
+      errors.address = "Alamat minimal 10 karakter";
+      isValid = false;
     }
-    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setErrorMessage("Format email tidak valid");
-      return false;
+
+    // Validasi Email
+    if (!formData.email || formData.email.trim().length === 0) {
+      errors.email = "Email wajib diisi";
+      isValid = false;
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        errors.email = "Format email tidak valid (contoh: admin@puskesmas.go.id)";
+        isValid = false;
+      }
     }
-    // [NEW] Password validation
-    if (!formData.password || formData.password.length < 8) {
-      setErrorMessage("Password harus minimal 8 karakter");
-      return false;
+
+    // Validasi Password
+    if (!formData.password || formData.password.length === 0) {
+      errors.password = "Password wajib diisi";
+      isValid = false;
+    } else if (formData.password.length < 8) {
+      errors.password = "Password minimal 8 karakter";
+      isValid = false;
+    } else if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(formData.password)) {
+      errors.password = "Password harus mengandung huruf dan angka";
+      isValid = false;
     }
-    if (!formData.phone || formData.phone.length < 8) {
-      setErrorMessage("Nomor telepon harus minimal 8 digit");
-      return false;
+
+    // Validasi Nomor Telepon
+    if (!formData.phone || formData.phone.trim().length === 0) {
+      errors.phone = "Nomor telepon wajib diisi";
+      isValid = false;
+    } else {
+      const phoneRegex = /^(\+62|62|0)[0-9]{9,12}$/;
+      const cleanPhone = formData.phone.replace(/\s/g, "");
+      if (!phoneRegex.test(cleanPhone)) {
+        errors.phone = "Format nomor telepon tidak valid (contoh: +62812345678 atau 0812345678)";
+        isValid = false;
+      }
     }
-    if (!formData.kepala_name || formData.kepala_name.length < 3 || formData.kepala_name.length > 255) {
-      setErrorMessage("Nama Kepala Puskesmas harus 3-255 karakter");
-      return false;
+
+    // Validasi Nama Kepala Puskesmas
+    if (!formData.kepala_name || formData.kepala_name.trim().length === 0) {
+      errors.kepala_name = "Nama Kepala Puskesmas wajib diisi";
+      isValid = false;
+    } else if (formData.kepala_name.trim().length < 3) {
+      errors.kepala_name = "Nama Kepala Puskesmas minimal 3 karakter";
+      isValid = false;
+    } else if (formData.kepala_name.length > 255) {
+      errors.kepala_name = "Nama Kepala Puskesmas maksimal 255 karakter";
+      isValid = false;
     }
-    if (!formData.kepala_nip || formData.kepala_nip.length < 5) {
-      setErrorMessage("NIP Kepala Puskesmas harus minimal 5 karakter");
-      return false;
+
+    // Validasi NIP
+    if (!formData.kepala_nip || formData.kepala_nip.trim().length === 0) {
+      errors.kepala_nip = "NIP wajib diisi";
+      isValid = false;
+    } else {
+      const nipRegex = /^[0-9]{18}$/;
+      const cleanNip = formData.kepala_nip.replace(/\s/g, "");
+      if (!nipRegex.test(cleanNip)) {
+        errors.kepala_nip = "NIP harus terdiri dari 18 digit angka";
+        isValid = false;
+      }
     }
-    return true;
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
-  // Validasi Step 2
+  // Validasi Step 2 dengan validasi file
   const validateStep2 = (): boolean => {
+    const errors: FieldErrors = {};
+    let isValid = true;
+
+    // Validasi SK Pendirian (WAJIB)
     if (!files.sk_document) {
-      setErrorMessage("SK Pendirian wajib diupload");
-      return false;
+      errors.sk_document = "SK Pendirian wajib diupload";
+      isValid = false;
+    } else {
+      // Validasi ukuran file (max 5MB)
+      if (files.sk_document.size > 5 * 1024 * 1024) {
+        errors.sk_document = "Ukuran file maksimal 5MB";
+        isValid = false;
+      }
+      // Validasi tipe file (PDF)
+      if (files.sk_document.type !== "application/pdf") {
+        errors.sk_document = "File harus berupa PDF";
+        isValid = false;
+      }
     }
+
+    // Validasi NPWP Document (OPSIONAL, tapi jika diupload harus valid)
+    if (files.npwp_document) {
+      if (files.npwp_document.size > 5 * 1024 * 1024) {
+        errors.npwp_document = "Ukuran file maksimal 5MB";
+        isValid = false;
+      }
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+      if (!allowedTypes.includes(files.npwp_document.type)) {
+        errors.npwp_document = "File harus berupa JPG, PNG, atau PDF";
+        isValid = false;
+      }
+    }
+
+    // Validasi Foto Gedung (WAJIB)
     if (!files.building_photo) {
-      setErrorMessage("Foto Gedung wajib diupload");
-      return false;
+      errors.building_photo = "Foto Gedung wajib diupload";
+      isValid = false;
+    } else {
+      // Validasi ukuran file (max 5MB)
+      if (files.building_photo.size > 5 * 1024 * 1024) {
+        errors.building_photo = "Ukuran file maksimal 5MB";
+        isValid = false;
+      }
+      // Validasi tipe file (Image)
+      const allowedImageTypes = ["image/jpeg", "image/jpg", "image/png"];
+      if (!allowedImageTypes.includes(files.building_photo.type)) {
+        errors.building_photo = "File harus berupa JPG atau PNG";
+        isValid = false;
+      }
     }
-    return true;
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
-  // Validasi Step 3
+  // Validasi Step 3 dengan validasi koordinat
   const validateStep3 = (): boolean => {
-    if (!formData.data_truth_confirmed) {
-      setErrorMessage("Anda harus menyetujui pernyataan kebenaran data");
-      return false;
+    const errors: FieldErrors = {};
+    let isValid = true;
+
+    // Validasi koordinat latitude
+    if (isNaN(formData.latitude) || formData.latitude < -90 || formData.latitude > 90) {
+      errors.latitude = "Latitude tidak valid (harus antara -90 dan 90)";
+      isValid = false;
     }
+
+    // Validasi koordinat longitude
+    if (isNaN(formData.longitude) || formData.longitude < -180 || formData.longitude > 180) {
+      errors.longitude = "Longitude tidak valid (harus antara -180 dan 180)";
+      isValid = false;
+    }
+
+    // Validasi default coordinates (jika masih default Jakarta)
+    // Hanya validasi jika koordinat masih default dan belum pernah diubah
+    const isDefaultCoordinates = 
+      Math.abs(formData.latitude - (-6.2088)) < 0.0001 && 
+      Math.abs(formData.longitude - 106.8456) < 0.0001;
+    
+    if (isDefaultCoordinates) {
+      errors.latitude = "Silakan pilih lokasi Puskesmas pada peta dengan mengklik atau drag marker";
+      errors.longitude = "Silakan pilih lokasi Puskesmas pada peta dengan mengklik atau drag marker";
+      isValid = false;
+    }
+
+    // Validasi pernyataan kebenaran data
+    if (!formData.data_truth_confirmed) {
+      errors.data_truth_confirmed = "Anda harus menyetujui pernyataan kebenaran data";
+      isValid = false;
+    }
+
+    // Validasi puskesmasId
     if (!puskesmasId) {
       setErrorMessage("Data registrasi tidak ditemukan. Silakan mulai dari awal.");
-      return false;
+      isValid = false;
     }
-    return true;
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
   // Step 1: Register dengan status draft
   const handleStep1Next = async () => {
     setErrorMessage("");
+    setFieldErrors({});
     
     if (!validateStep1()) {
+      toast({
+        variant: "destructive",
+        title: "Validasi Gagal",
+        description: "Mohon periksa kembali data yang telah diisi. Terdapat beberapa field yang perlu diperbaiki.",
+      });
       return;
     }
 
     setIsLoading(true);
     try {
       const response = await puskesmasRegistrationApi.registerStep1({
-        name: formData.name,
-        address: formData.address,
-        email: formData.email,
-        password: formData.password, // [NEW] Send password to API
-        phone: formData.phone,
-        kepala_name: formData.kepala_name,
-        kepala_nip: formData.kepala_nip,
-        npwp: formData.npwp || undefined,
+        name: formData.name.trim(),
+        address: formData.address.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        phone: formData.phone.replace(/\s/g, ""),
+        kepala_name: formData.kepala_name.trim(),
+        kepala_nip: formData.kepala_nip.replace(/\s/g, ""),
+        npwp: formData.npwp?.trim() || undefined,
         sk_document_url: "",
         building_photo_url: "",
         latitude: 0,
@@ -184,10 +408,29 @@ export default function PuskesmasRegistrationPage() {
       setPuskesmasId(response.puskesmas.id);
       console.log("✅ Puskesmas ID saved:", response.puskesmas.id);
       
+      toast({
+        title: "Data Tersimpan",
+        description: "Data Puskesmas berhasil disimpan. Lanjutkan ke tahap berikutnya.",
+      });
+      
+      // Tandai step 1 sebagai completed
+      setCompletedSteps((prev) => {
+        if (!prev.includes(1)) {
+          return [...prev, 1];
+        }
+        return prev;
+      });
+      
       // Lanjut ke step 2
       setCurrentStep(2);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Registrasi gagal. Silakan coba lagi.");
+      const errorMsg = error instanceof Error ? error.message : "Registrasi gagal. Silakan coba lagi.";
+      setErrorMessage(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Registrasi Gagal",
+        description: errorMsg,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -196,13 +439,25 @@ export default function PuskesmasRegistrationPage() {
   // Step 2: Upload dokumen
   const handleStep2Next = async () => {
     setErrorMessage("");
+    setFieldErrors({});
     
     if (!validateStep2()) {
+      toast({
+        variant: "destructive",
+        title: "Validasi Dokumen Gagal",
+        description: "Mohon periksa kembali dokumen yang diupload. Pastikan format dan ukuran file sesuai ketentuan.",
+      });
       return;
     }
 
     if (!puskesmasId) {
-      setErrorMessage("Data registrasi tidak ditemukan. Silakan mulai dari awal.");
+      const errorMsg = "Data registrasi tidak ditemukan. Silakan mulai dari awal.";
+      setErrorMessage(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Data Tidak Ditemukan",
+        description: errorMsg,
+      });
       return;
     }
 
@@ -231,10 +486,29 @@ export default function PuskesmasRegistrationPage() {
         setUploadProgress((prev) => ({ ...prev, photo: false }));
       }
 
+      toast({
+        title: "Dokumen Berhasil Diupload",
+        description: "Semua dokumen berhasil diupload. Lanjutkan ke tahap berikutnya.",
+      });
+
+      // Tandai step 2 sebagai completed
+      setCompletedSteps((prev) => {
+        if (!prev.includes(2)) {
+          return [...prev, 2];
+        }
+        return prev;
+      });
+
       // Lanjut ke step 3
       setCurrentStep(3);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Upload dokumen gagal. Silakan coba lagi.");
+      const errorMsg = error instanceof Error ? error.message : "Upload dokumen gagal. Silakan coba lagi.";
+      setErrorMessage(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Upload Gagal",
+        description: errorMsg,
+      });
     } finally {
       setIsLoading(false);
       setUploadProgress({ sk: false, npwp: false, photo: false });
@@ -246,6 +520,9 @@ export default function PuskesmasRegistrationPage() {
       handleStep1Next();
     } else if (currentStep === 2) {
       handleStep2Next();
+    } else if (currentStep === 3) {
+      // Step 3 langsung submit, tidak ada next
+      handleSubmit();
     } else if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
@@ -253,6 +530,8 @@ export default function PuskesmasRegistrationPage() {
 
   const prevStep = () => {
     if (currentStep > 1) {
+      setErrorMessage("");
+      setFieldErrors({});
       setCurrentStep(currentStep - 1);
     }
   };
@@ -260,13 +539,25 @@ export default function PuskesmasRegistrationPage() {
   // Step 3: Submit untuk verifikasi
   const handleSubmit = async () => {
     setErrorMessage("");
+    setFieldErrors({});
 
     if (!validateStep3()) {
+      toast({
+        variant: "destructive",
+        title: "Validasi Gagal",
+        description: "Mohon pastikan lokasi sudah dipilih dan pernyataan kebenaran data sudah dicentang.",
+      });
       return;
     }
 
     if (!puskesmasId) {
-      setErrorMessage("Data registrasi tidak ditemukan. Silakan mulai dari awal.");
+      const errorMsg = "Data registrasi tidak ditemukan. Silakan mulai dari awal.";
+      setErrorMessage(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Data Tidak Ditemukan",
+        description: errorMsg,
+      });
       return;
     }
 
@@ -281,12 +572,25 @@ export default function PuskesmasRegistrationPage() {
         registration_status: "pending_approval",
       });
 
+      toast({
+        title: "Registrasi Berhasil",
+        description: "Data registrasi telah dikirim untuk verifikasi. Proses verifikasi biasanya memakan waktu 1-3 hari kerja.",
+      });
+
       // Registrasi berhasil - redirect ke halaman login dengan info login
-      router.push(
-        `/login?registered=true&phone=${encodeURIComponent(formData.phone)}&password=${encodeURIComponent(formData.kepala_nip)}`
-      );
+      setTimeout(() => {
+        router.push(
+          `/login?registered=true&phone=${encodeURIComponent(formData.phone)}&password=${encodeURIComponent(formData.kepala_nip)}`
+        );
+      }, 2000);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Submit gagal. Silakan coba lagi.");
+      const errorMsg = error instanceof Error ? error.message : "Submit gagal. Silakan coba lagi.";
+      setErrorMessage(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Submit Gagal",
+        description: errorMsg,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -315,25 +619,51 @@ export default function PuskesmasRegistrationPage() {
               
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nama Puskesmas</Label>
+                  <Label htmlFor="name">
+                    Nama Puskesmas <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => updateFormData("name", e.target.value)}
+                    onChange={(e) => {
+                      updateFormData("name", e.target.value);
+                      clearFieldError("name");
+                    }}
                     placeholder="Contoh: Puskesmas Sungai Penuh"
-                    className="focus:border-blue-500 transition-colors"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.name ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.name && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.name}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Alamat Lengkap</Label>
+                  <Label htmlFor="address">
+                    Alamat Lengkap <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="address"
                     value={formData.address}
-                    onChange={(e) => updateFormData("address", e.target.value)}
+                    onChange={(e) => {
+                      updateFormData("address", e.target.value);
+                      clearFieldError("address");
+                    }}
                     placeholder="Jl. Merdeka No. 1, Sungai Penuh, Jambi"
-                    className="focus:border-blue-500 transition-colors"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.address ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.address && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.address}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -347,38 +677,71 @@ export default function PuskesmasRegistrationPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Resmi</Label>
+                  <Label htmlFor="email">
+                    Email Resmi <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => updateFormData("email", e.target.value)}
+                    onChange={(e) => {
+                      updateFormData("email", e.target.value);
+                      clearFieldError("email");
+                    }}
                     placeholder="admin@puskesmas.go.id"
-                    className="focus:border-blue-500 transition-colors"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.email ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.email && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Nomor Telepon (Username)</Label>
+                  <Label htmlFor="phone">
+                    Nomor Telepon (Username) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => updateFormData("phone", e.target.value)}
-                    placeholder="+62812345678"
-                    className="focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      updateFormData("phone", e.target.value);
+                      clearFieldError("phone");
+                    }}
+                    placeholder="+62812345678 atau 0812345678"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.phone ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.phone && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.phone}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">
+                    Password <span className="text-red-500">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
-                      onChange={(e) => updateFormData("password", e.target.value)}
-                      placeholder="Minimal 8 karakter"
-                      className="pr-10 focus:border-blue-500 transition-colors"
+                      onChange={(e) => {
+                        updateFormData("password", e.target.value);
+                        clearFieldError("password");
+                      }}
+                      placeholder="Minimal 8 karakter (huruf + angka)"
+                      className={`pr-10 focus:border-blue-500 transition-colors ${
+                        fieldErrors.password ? "border-red-500 focus:border-red-500" : ""
+                      }`}
                     />
                     <button
                       type="button"
@@ -392,9 +755,16 @@ export default function PuskesmasRegistrationPage() {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Gunakan kombinasi huruf dan angka untuk keamanan.
-                  </p>
+                  {fieldErrors.password ? (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.password}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Gunakan kombinasi huruf dan angka untuk keamanan.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -408,25 +778,51 @@ export default function PuskesmasRegistrationPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="kepala_name">Nama Lengkap</Label>
+                  <Label htmlFor="kepala_name">
+                    Nama Lengkap <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="kepala_name"
                     value={formData.kepala_name}
-                    onChange={(e) => updateFormData("kepala_name", e.target.value)}
+                    onChange={(e) => {
+                      updateFormData("kepala_name", e.target.value);
+                      clearFieldError("kepala_name");
+                    }}
                     placeholder="Contoh: dr. Rina Santoso"
-                    className="focus:border-blue-500 transition-colors"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.kepala_name ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.kepala_name && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.kepala_name}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kepala_nip">NIP</Label>
+                  <Label htmlFor="kepala_nip">
+                    NIP <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="kepala_nip"
                     value={formData.kepala_nip}
-                    onChange={(e) => updateFormData("kepala_nip", e.target.value)}
-                    placeholder="Contoh: 198012312010012001"
-                    className="focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      updateFormData("kepala_nip", e.target.value);
+                      clearFieldError("kepala_nip");
+                    }}
+                    placeholder="Contoh: 198012312010012001 (18 digit)"
+                    className={`focus:border-blue-500 transition-colors ${
+                      fieldErrors.kepala_nip ? "border-red-500 focus:border-red-500" : ""
+                    }`}
                   />
+                  {fieldErrors.kepala_nip && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.kepala_nip}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -462,12 +858,21 @@ export default function PuskesmasRegistrationPage() {
                     deferUpload={true}
                     onFileChange={(file) => updateFile("sk_document", file)}
                     acceptedTypes=".pdf"
-                    maxSize={2}
+                    maxSize={5}
                     uploadText="Drag & Drop atau Cari File"
-                    subtitle="Maks. 2MB, PDF"
+                    subtitle="Maks. 5MB, PDF"
                   />
                   {uploadProgress.sk && (
-                    <p className="text-xs text-blue-600">Mengupload...</p>
+                    <p className="text-xs text-blue-600 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Mengupload...
+                    </p>
+                  )}
+                  {fieldErrors.sk_document && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.sk_document}
+                    </p>
                   )}
                 </div>
 
@@ -476,13 +881,22 @@ export default function PuskesmasRegistrationPage() {
                   <FileUpload
                     deferUpload={true}
                     onFileChange={(file) => updateFile("npwp_document", file)}
-                    acceptedTypes=".pdf,.jpg,.jpeg"
-                    maxSize={2}
+                    acceptedTypes=".pdf,.jpg,.jpeg,.png"
+                    maxSize={5}
                     uploadText="Upload Gambar/PDF"
-                    subtitle="Format: JPG, JPEG, PDF, Maks. 2MB"
+                    subtitle="Format: JPG, PNG, PDF, Maks. 5MB"
                   />
                   {uploadProgress.npwp && (
-                    <p className="text-xs text-blue-600">Mengupload...</p>
+                    <p className="text-xs text-blue-600 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Mengupload...
+                    </p>
+                  )}
+                  {fieldErrors.npwp_document && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.npwp_document}
+                    </p>
                   )}
                 </div>
 
@@ -494,12 +908,21 @@ export default function PuskesmasRegistrationPage() {
                     deferUpload={true}
                     onFileChange={(file) => updateFile("building_photo", file)}
                     acceptedTypes=".jpg,.jpeg,.png"
-                    maxSize={2}
+                    maxSize={5}
                     uploadText="Ambil Foto atau Upload"
-                    subtitle="Format: JPG, JPEG, PNG, Maks. 2MB"
+                    subtitle="Format: JPG, PNG, Maks. 5MB"
                   />
                   {uploadProgress.photo && (
-                    <p className="text-xs text-blue-600">Mengupload...</p>
+                    <p className="text-xs text-blue-600 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Mengupload...
+                    </p>
+                  )}
+                  {fieldErrors.building_photo && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {fieldErrors.building_photo}
+                    </p>
                   )}
                 </div>
               </div>
@@ -535,7 +958,9 @@ export default function PuskesmasRegistrationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="latitude">Latitude</Label>
+                <Label htmlFor="latitude">
+                  Latitude <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="latitude"
                   type="text"
@@ -545,15 +970,26 @@ export default function PuskesmasRegistrationPage() {
                     const numValue = parseFloat(value);
                     if (!isNaN(numValue)) {
                       updateFormData("latitude", numValue);
+                      clearFieldError("latitude");
                     }
                   }}
                   placeholder="-6,2088"
-                  className="bg-gray-50"
+                  className={`bg-gray-50 ${
+                    fieldErrors.latitude ? "border-red-500 focus:border-red-500" : ""
+                  }`}
                 />
+                {fieldErrors.latitude && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {fieldErrors.latitude}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="longitude">Longitude</Label>
+                <Label htmlFor="longitude">
+                  Longitude <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="longitude"
                   type="text"
@@ -563,26 +999,39 @@ export default function PuskesmasRegistrationPage() {
                     const numValue = parseFloat(value);
                     if (!isNaN(numValue)) {
                       updateFormData("longitude", numValue);
+                      clearFieldError("longitude");
                     }
                   }}
                   placeholder="106,8456"
-                  className="bg-gray-50"
+                  className={`bg-gray-50 ${
+                    fieldErrors.longitude ? "border-red-500 focus:border-red-500" : ""
+                  }`}
                 />
+                {fieldErrors.longitude && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {fieldErrors.longitude}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Pernyataan Kebenaran Data di Step 3 */}
-            <div className="bg-gray-50 p-6 rounded-lg border">
+            <div className={`bg-gray-50 p-6 rounded-lg border ${
+              fieldErrors.data_truth_confirmed ? "border-red-200 bg-red-50/30" : ""
+            }`}>
               <h3 className="font-semibold text-gray-900 mb-4">
-                Pernyataan Kebenaran Data
+                Pernyataan Kebenaran Data <span className="text-red-500">*</span>
               </h3>
               <div className="flex items-start space-x-3">
                 <Checkbox
                   id="data_truth_confirmed"
                   checked={formData.data_truth_confirmed}
-                  onCheckedChange={(checked) =>
-                    updateFormData("data_truth_confirmed", checked === true)
-                  }
+                  onCheckedChange={(checked) => {
+                    updateFormData("data_truth_confirmed", checked === true);
+                    clearFieldError("data_truth_confirmed");
+                  }}
+                  className={fieldErrors.data_truth_confirmed ? "border-red-500" : ""}
                 />
                 <Label
                   htmlFor="data_truth_confirmed"
@@ -595,6 +1044,12 @@ export default function PuskesmasRegistrationPage() {
                   hari ditemukan data yang tidak sesuai.
                 </Label>
               </div>
+              {fieldErrors.data_truth_confirmed && (
+                <p className="text-sm text-red-600 flex items-center gap-1 mt-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {fieldErrors.data_truth_confirmed}
+                </p>
+              )}
             </div>
           </div>
         );
@@ -695,42 +1150,58 @@ export default function PuskesmasRegistrationPage() {
         {/* Stepper */}
         <div className="mb-8 border-b border-gray-200">
           <div className="flex">
-            {steps.map((step) => (
-              <button
-                key={step.id}
-                onClick={() => setCurrentStep(step.id)}
-                className={`
-                  flex-1 py-4 px-2 text-sm font-medium border-b-2 transition-colors
-                  ${
-                    currentStep === step.id
-                      ? "border-blue-600 text-blue-600"
-                      : currentStep > step.id
-                        ? "border-green-500 text-green-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+            {steps.map((step) => {
+              const isCompleted = completedSteps.includes(step.id);
+              const canNavigate = canNavigateToStep(step.id) || step.id <= currentStep;
+              const isDisabled = !canNavigate && step.id > currentStep;
+              
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => handleStepNavigation(step.id)}
+                  disabled={isDisabled}
+                  className={`
+                    flex-1 py-4 px-2 text-sm font-medium border-b-2 transition-colors
+                    ${
+                      isDisabled
+                        ? "border-transparent text-gray-300 cursor-not-allowed opacity-50"
+                        : currentStep === step.id
+                          ? "border-blue-600 text-blue-600"
+                          : isCompleted || currentStep > step.id
+                            ? "border-green-500 text-green-600 hover:border-green-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
+                    }
+                  `}
+                  title={
+                    isDisabled
+                      ? `Lengkapi tahap ${step.id - 1} terlebih dahulu`
+                      : undefined
                   }
-                `}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  {currentStep > step.id ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : (
-                    <span
-                      className={`
-                      w-6 h-6 rounded-full flex items-center justify-center text-xs
-                      ${
-                        currentStep === step.id
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-300 text-gray-600"
-                      }
-                    `}
-                    >
-                      {step.id}
-                    </span>
-                  )}
-                  <span className="hidden sm:inline">{step.title}</span>
-                </div>
-              </button>
-            ))}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    {isCompleted || currentStep > step.id ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      <span
+                        className={`
+                        w-6 h-6 rounded-full flex items-center justify-center text-xs
+                        ${
+                          currentStep === step.id
+                            ? "bg-blue-600 text-white"
+                            : isDisabled
+                              ? "bg-gray-200 text-gray-400"
+                              : "bg-gray-300 text-gray-600"
+                        }
+                      `}
+                      >
+                        {step.id}
+                      </span>
+                    )}
+                    <span className="hidden sm:inline">{step.title}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

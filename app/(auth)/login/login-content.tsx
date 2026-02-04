@@ -181,11 +181,11 @@ export function LoginContent() {
   const getPlaceholderEmail = () => {
     switch (activeTab) {
       case "super_admin":
-        return "superadmin@wellmom.go.id";
+        return "superadmin@gmail.com";
       case "puskesmas":
-        return "admin@puskesmas.go.id";
+        return "puskesmas@gmail.com";
       case "perawat":
-        return "perawat@puskesmas.go.id";
+        return "perawat@gmail.com";
     }
   };
 
