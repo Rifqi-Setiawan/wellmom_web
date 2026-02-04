@@ -639,30 +639,12 @@ export default function PuskesmasProfilePage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const imageUrl = photoPreview.startsWith('blob:') 
-                            ? photoPreview 
-                            : photoPreview.startsWith('http') 
-                              ? photoPreview 
-                              : `${API_BASE_URL}${photoPreview}`;
-                          
-                          // Open image in new tab
-                          const newWindow = window.open();
-                          if (newWindow) {
-                            newWindow.document.write(`
-                              <!DOCTYPE html>
-                              <html>
-                                <head>
-                                  <title>Foto Gedung Puskesmas</title>
-                                  <style>
-                                    body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000; }
-                                    img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-                                  </style>
-                                </head>
-                                <body>
-                                  <img src="${imageUrl}" alt="Foto Gedung Puskesmas" />
-                                </body>
-                              </html>
-                            `);
+                          if (photoPreview.startsWith('blob:')) {
+                            // For blob URLs (newly selected files), show a message
+                            alert('File baru akan diupload saat Anda menekan "Simpan Perubahan"');
+                          } else {
+                            // For server URLs, open directly like NPWP does
+                            openDocument(photoPreview);
                           }
                         }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
