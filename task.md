@@ -1,8 +1,0 @@
-- [ ] Refactor Puskesmas Registration UI (Step 1)
-    - [x] Create implementation plan <!-- id: 0 -->
-    - [x] Reorganize layout into sections (Data Puskesmas, Sign In Details, Penanggung Jawab) <!-- id: 1 -->
-    - [x] Add password visibility toggle <!-- id: 2 -->
-    - [x] Verify UI changes <!-- id: 3 -->
-- [x] Revise Puskesmas Login (Phone -> Email)
-    - [x] Update API client (lib/api/auth.ts) <!-- id: 4 -->
-    - [x] Update Login UI (app/(auth)/login/page.tsx) <!-- id: 5 -->

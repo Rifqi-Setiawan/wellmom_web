@@ -114,7 +114,7 @@ export default function PatientManagementPage() {
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
 
   // Get nurse name by ID
-  const getNurseName = (perawatId: number | null): string => {
+  const getNurseName = (perawatId: number | null | undefined): string => {
     if (!perawatId) return '';
     const nurse = nurses.find(n => n.id === perawatId);
     return nurse ? `Bdn. ${nurse.nama_lengkap}` : '';
