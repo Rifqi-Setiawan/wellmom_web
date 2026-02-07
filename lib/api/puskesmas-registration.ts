@@ -86,17 +86,29 @@ export const puskesmasRegistrationApi = {
   uploadSKPendirian: async (puskesmasId: number, file: File): Promise<UploadResponse> => {
     console.log(`📄 Step 2.1: Uploading SK Pendirian for puskesmas ID: ${puskesmasId}`);
     console.log('📁 File:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+    console.log('📋 File type:', file.type);
     
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('Ukuran file maksimal 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Ukuran file maksimal 5MB');
     }
     
-    if (file.type !== 'application/pdf') {
+    // Validasi tipe file dengan fallback ke ekstensi
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    const isValidType = file.type === 'application/pdf' || fileName.endsWith('.pdf');
+    
+    if (!isValidType) {
+      console.error('❌ SK Pendirian file type validation failed:', {
+        mimeType: file.type,
+        extension: fileExtension,
+        fileName: file.name
+      });
       throw new Error('File harus berupa PDF');
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    // Pastikan filename asli terbawa saat upload
+    formData.append('file', file, file.name);
 
     try {
       const response = await api.put<UploadResponse>(
@@ -124,18 +136,34 @@ export const puskesmasRegistrationApi = {
   uploadNPWP: async (puskesmasId: number, file: File): Promise<UploadResponse> => {
     console.log(`📄 Step 2.2: Uploading NPWP for puskesmas ID: ${puskesmasId}`);
     console.log('📁 File:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+    console.log('📋 File type:', file.type);
     
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('Ukuran file maksimal 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Ukuran file maksimal 5MB');
     }
     
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('File harus berupa PDF, JPG, atau JPEG');
+    // Validasi tipe file dengan fallback ke ekstensi
+    // Backend hanya menerima PDF atau JPG/JPEG untuk NPWP (BUKAN PNG)
+    const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg'];
+    
+    const isValidType = allowedMimeTypes.includes(file.type) || 
+                       allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidType) {
+      console.error('❌ NPWP file type validation failed:', {
+        mimeType: file.type,
+        extension: fileExtension,
+        fileName: file.name
+      });
+      throw new Error('NPWP harus berformat PDF atau JPG/JPEG');
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    // Pastikan filename asli terbawa saat upload
+    formData.append('file', file, file.name);
 
     try {
       const response = await api.put<UploadResponse>(
@@ -163,18 +191,33 @@ export const puskesmasRegistrationApi = {
   uploadFotoGedung: async (puskesmasId: number, file: File): Promise<UploadResponse> => {
     console.log(`📸 Step 2.3: Uploading Foto Gedung for puskesmas ID: ${puskesmasId}`);
     console.log('📁 File:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+    console.log('📋 File type:', file.type);
     
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('Ukuran file maksimal 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Ukuran file maksimal 5MB');
     }
     
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
+    // Validasi tipe file dengan fallback ke ekstensi
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+    
+    const isValidType = allowedMimeTypes.includes(file.type) || 
+                       allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidType) {
+      console.error('❌ Foto Gedung file type validation failed:', {
+        mimeType: file.type,
+        extension: fileExtension,
+        fileName: file.name
+      });
       throw new Error('File harus berupa JPG, JPEG, atau PNG');
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    // Pastikan filename asli terbawa saat upload
+    formData.append('file', file, file.name);
 
     try {
       const response = await api.put<UploadResponse>(

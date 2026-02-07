@@ -9,6 +9,7 @@ import Link from "next/link";
 import { LayoutDashboard, Users, Settings, LogOut, Home, MessageCircle, MessageSquareText } from "lucide-react";
 import { buildImageUrl } from "@/lib/utils";
 import { NavigationLoadingBar } from "@/components/ui/navigation-loading-bar";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function PerawatLayout({
   children,
@@ -237,6 +238,9 @@ export default function PerawatLayout({
 
       {/* Main Content */}
       <main className="ml-64 min-h-screen">{children}</main>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   );
 }

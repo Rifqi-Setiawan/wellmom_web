@@ -14,6 +14,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { nurseApi } from "@/lib/api/nurse";
 import { healthRecordsApi } from "@/lib/api/health-records";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import type { IbuHamil } from "@/lib/types/ibu-hamil";
 
 const healthRecordSchema = z.object({
@@ -41,6 +42,7 @@ export default function AddHealthRecordPage() {
   const params = useParams();
   const router = useRouter();
   const { token, user, perawatInfo } = useAuthStore();
+  const { toast } = useToast();
   const [patient, setPatient] = useState<IbuHamil | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -104,10 +106,24 @@ export default function AddHealthRecordPage() {
       };
 
       await healthRecordsApi.createHealthRecord(token, payload);
-      router.push(`/perawat/pasien/${patientId}`);
+      
+      // Show success toast
+      toast({
+        title: "Data berhasil disimpan",
+        description: "Data berhasil disimpan & Notifikasi risiko telah dikirim ke pasien.",
+      });
+      
+      // Navigate after a short delay to allow toast to be visible
+      setTimeout(() => {
+        router.push(`/perawat/pasien/${patientId}`);
+      }, 500);
     } catch (error) {
       console.error("Submission failed", error);
-      alert("Gagal menyimpan data pemeriksaan.");
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan data",
+        description: "Gagal menyimpan data pemeriksaan. Silakan coba lagi.",
+      });
     } finally {
       setIsLoading(false);
     }

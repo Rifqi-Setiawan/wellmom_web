@@ -1,4 +1,20 @@
 // ============================================
+// USER TYPES
+// ============================================
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  phone: string | null;
+  photo_profile_url: string | null; // ✅ Field untuk foto profil
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
 // CONVERSATION TYPES
 // ============================================
 
@@ -14,11 +30,19 @@ export interface Conversation {
 export interface ConversationWithDetails extends Conversation {
   last_message_text: string | null;
   last_message_sender_id: number | null;
+  last_message_at: string | null;
   unread_count: number;
   /** Enriched data dari backend (optional) */
   ibu_hamil_name?: string;
-  ibu_hamil_photo_url?: string;
+  ibu_hamil_photo_url?: string; // ✅ Photo profile URL dari user
   ibu_hamil_phone?: string;
+  /** Nested user data (optional, jika backend mengirim nested object) */
+  ibu_hamil?: {
+    id: number;
+    user_id: number;
+    nama_lengkap: string;
+    user?: User; // ✅ Nested user dengan photo_profile_url
+  };
 }
 
 export interface ConversationListResponse {

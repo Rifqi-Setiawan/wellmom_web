@@ -179,8 +179,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
-  connectWebSocket: (conversationId: number, token: string) => {
+  connectWebSocket: (conversationId: number, token?: string) => {
     get().disconnectWebSocket();
+
+    // Get token from Auth Store if not provided
+    const authToken = token || useAuthStore.getState().token;
+    if (!authToken) {
+      console.error('Chat: Cannot connect WebSocket - no token available');
+      set({ isConnected: false, error: 'No authentication token available' });
+      return;
+    }
 
     chatWebSocket.onMessage = (message: Message) => {
       get().addMessage(message);
@@ -202,7 +210,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set({ isConnected: false });
     };
 
-    chatWebSocket.connect(conversationId, token);
+    chatWebSocket.connect(conversationId, authToken);
     set({ isConnected: true });
   },
 

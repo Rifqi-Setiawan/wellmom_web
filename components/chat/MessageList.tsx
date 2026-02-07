@@ -19,10 +19,30 @@ export function MessageList({
   className,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Auto scroll ke bawah saat pesan baru masuk
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const isNearBottom = 
+        container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      
+      // Hanya scroll jika user sudah di bagian bawah (tidak sedang scroll ke atas)
+      if (isNearBottom) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   }, [messages]);
+
+  // ✅ Scroll ke bawah saat pertama kali load
+  useEffect(() => {
+    if (messages.length > 0 && !isLoading) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -49,7 +69,8 @@ export function MessageList({
 
   return (
     <div
-      className={`flex flex-col gap-3 ${className ?? ''}`}
+      ref={messagesContainerRef}
+      className={`flex flex-col gap-3 overflow-y-auto ${className ?? ''}`}
       role="log"
       aria-live="polite"
       aria-label="Daftar pesan"
@@ -63,23 +84,33 @@ export function MessageList({
             data-message-id={msg.id}
             data-own-message={isOwnMessage}
             data-sender-role={msg.sender_role}
-            className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+            className={`flex w-full ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                isOwnMessage
-                  ? 'bg-[#3B9ECF] text-white rounded-br-md'
-                  : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
+              className={`flex flex-col max-w-[75%] sm:max-w-[70%] md:max-w-[65%] ${
+                isOwnMessage ? 'items-end' : 'items-start'
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap wrap-break-word">{msg.message_text}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  isOwnMessage ? 'text-white/80' : 'text-gray-400'
+              {/* ✅ Bubble Chat dengan styling modern */}
+              <div
+                className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                  isOwnMessage
+                    ? 'bg-[#3B9ECF] text-white rounded-br-md' // ✅ Sudut tumpul kecuali pojok kanan bawah
+                    : 'bg-gray-100 text-gray-900 rounded-bl-md border border-gray-200' // ✅ Sudut tumpul kecuali pojok kiri bawah
                 }`}
               >
-                {format(new Date(msg.created_at), 'HH:mm', { locale: id })}
-              </p>
+                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                  {msg.message_text}
+                </p>
+                {/* ✅ Timestamp di pojok bawah */}
+                <p
+                  className={`text-xs mt-1.5 flex justify-end ${
+                    isOwnMessage ? 'text-white/70' : 'text-gray-500'
+                  }`}
+                >
+                  {format(new Date(msg.created_at), 'HH:mm', { locale: id })}
+                </p>
+              </div>
             </div>
           </div>
         );

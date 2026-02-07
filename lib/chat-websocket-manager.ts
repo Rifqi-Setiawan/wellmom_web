@@ -1,4 +1,5 @@
 import type { Message, WebSocketMessage } from '@/lib/types/chat';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 // ============================================
 // WEBSOCKET MANAGER CLASS
@@ -41,11 +42,24 @@ export class ChatWebSocketManager {
 
   /**
    * Connect to WebSocket server
+   * If token is not provided, it will be fetched from Auth Store
    */
-  public connect(conversationId: number, token: string): void {
+  public connect(conversationId: number, token?: string): void {
+    // Get token from Auth Store if not provided
+    let authToken = token;
+    if (!authToken) {
+      const authState = useAuthStore.getState();
+      authToken = authState.token || null;
+      if (!authToken) {
+        console.error('WebSocket: No token provided and no token in Auth Store');
+        this.onError?.(new Event('no_token'));
+        return;
+      }
+    }
+
     if (
       this.conversationId === conversationId &&
-      this.token === token &&
+      this.token === authToken &&
       this.ws !== null &&
       this.ws.readyState === WebSocket.OPEN
     ) {
@@ -56,7 +70,7 @@ export class ChatWebSocketManager {
 
     this.isClosing = false;
     this.conversationId = conversationId;
-    this.token = token;
+    this.token = authToken;
     this.reconnectAttempts = 0;
 
     this._createConnection();
@@ -233,7 +247,14 @@ export class ChatWebSocketManager {
       return;
     }
 
+    // Try to get token from Auth Store if not available
+    if (this.token === null) {
+      const authState = useAuthStore.getState();
+      this.token = authState.token || null;
+    }
+
     if (this.conversationId === null || this.token === null) {
+      console.warn('WebSocket: Cannot reconnect - missing conversationId or token');
       return;
     }
 
@@ -246,8 +267,16 @@ export class ChatWebSocketManager {
     );
 
     this.reconnectTimer = setTimeout(() => {
+      // Re-check token from Auth Store before reconnecting
+      if (this.token === null) {
+        const authState = useAuthStore.getState();
+        this.token = authState.token || null;
+      }
+
       if (this.conversationId !== null && this.token !== null) {
         this._createConnection();
+      } else {
+        console.warn('WebSocket: Cannot reconnect - missing credentials');
       }
       this.reconnectTimer = null;
     }, delay);

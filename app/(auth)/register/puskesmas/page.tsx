@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileUpload } from "@/components/forms/file-upload";
 import { InteractiveMap } from "@/components/maps/interactive-map";
-import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Eye, EyeOff, AlertCircle, Navigation } from "lucide-react";
 import { puskesmasRegistrationApi } from "@/lib/api/puskesmas-registration";
 import { useToast } from "@/hooks/use-toast";
 
@@ -104,6 +104,9 @@ export default function PuskesmasRegistrationPage() {
   // State for password visibility
   const [showPassword, setShowPassword] = useState(false);
 
+  // State for geolocation
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
   const updateFormData = (
     field: keyof RegistrationData,
     value: string | number | boolean,
@@ -115,8 +118,84 @@ export default function PuskesmasRegistrationPage() {
     setFiles((prev) => ({ ...prev, [field]: file }));
     // Clear error when file is selected
     if (file) {
-      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+      console.log(`File selected for ${field}:`, {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+      // Clear error untuk field ini
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    } else {
+      // Jika file dihapus, clear error juga
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
+  };
+
+  // Fungsi untuk deteksi lokasi saat ini
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        variant: "destructive",
+        title: "Geolocation Tidak Didukung",
+        description: "Browser Anda tidak mendukung fitur geolocation. Silakan gunakan peta untuk memilih lokasi secara manual.",
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        // Update koordinat di form data
+        updateFormData("latitude", lat);
+        updateFormData("longitude", lng);
+        
+        // Clear error untuk koordinat
+        clearFieldError("latitude");
+        clearFieldError("longitude");
+        
+        setIsGettingLocation(false);
+        
+        toast({
+          title: "Lokasi Berhasil Dideteksi",
+          description: `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Silakan periksa lokasi di peta dan sesuaikan jika perlu.`,
+        });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setIsGettingLocation(false);
+        
+        let errorMessage = "Gagal mendapatkan lokasi saat ini.";
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMessage = "Izin akses lokasi ditolak. Silakan berikan izin akses lokasi di pengaturan browser Anda.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMessage = "Informasi lokasi tidak tersedia. Silakan gunakan peta untuk memilih lokasi secara manual.";
+        } else if (error.code === error.TIMEOUT) {
+          errorMessage = "Waktu permintaan lokasi habis. Silakan coba lagi atau gunakan peta untuk memilih lokasi secara manual.";
+        }
+        
+        toast({
+          variant: "destructive",
+          title: "Gagal Mendapatkan Lokasi",
+          description: errorMessage,
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   };
 
   // Helper function to clear field error
@@ -269,6 +348,59 @@ export default function PuskesmasRegistrationPage() {
     return isValid;
   };
 
+  // Helper function untuk validasi tipe file berdasarkan MIME type dan ekstensi
+  const isValidFileType = (file: File, allowedMimeTypes: string[], allowedExtensions: string[]): boolean => {
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type.toLowerCase();
+    
+    // Normalisasi allowed types
+    const normalizedAllowedTypes = allowedMimeTypes.map(t => t.toLowerCase());
+    const normalizedAllowedExtensions = allowedExtensions.map(ext => {
+      const normalized = ext.toLowerCase();
+      return normalized.startsWith('.') ? normalized : `.${normalized}`;
+    });
+    
+    // Cek MIME type dengan berbagai variasi
+    const mimeTypeValid = normalizedAllowedTypes.some(allowedType => {
+      // Exact match
+      if (fileType === allowedType) return true;
+      
+      // Handle variations: image/jpeg vs image/jpg
+      if ((fileType === 'image/jpeg' || fileType === 'image/jpg') && 
+          (allowedType === 'image/jpeg' || allowedType === 'image/jpg')) {
+        return true;
+      }
+      
+      // Handle empty MIME type (beberapa browser tidak detect dengan benar)
+      if (!fileType || fileType === '' || fileType === 'application/octet-stream') {
+        // Fallback ke ekstensi
+        return false;
+      }
+      
+      return false;
+    });
+    
+    // Jika MIME type valid, return true
+    if (mimeTypeValid) {
+      console.log(`File type valid (MIME): ${file.name} - ${fileType}`);
+      return true;
+    }
+    
+    // Fallback: cek ekstensi file (penting untuk browser yang tidak detect MIME type dengan benar)
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    const extensionValid = normalizedAllowedExtensions.some(ext => {
+      return fileName.endsWith(ext);
+    });
+    
+    if (extensionValid) {
+      console.log(`File type valid (extension): ${file.name} - ${fileExtension}`);
+      return true;
+    }
+    
+    console.warn(`File type invalid: ${file.name} - MIME: ${fileType}, Extension: ${fileExtension}`);
+    return false;
+  };
+
   // Validasi Step 2 dengan validasi file
   const validateStep2 = (): boolean => {
     const errors: FieldErrors = {};
@@ -279,13 +411,26 @@ export default function PuskesmasRegistrationPage() {
       errors.sk_document = "SK Pendirian wajib diupload";
       isValid = false;
     } else {
+      // Log untuk debugging
+      console.log('SK Document validation:', {
+        name: files.sk_document.name,
+        type: files.sk_document.type,
+        size: files.sk_document.size,
+      });
+
       // Validasi ukuran file (max 5MB)
       if (files.sk_document.size > 5 * 1024 * 1024) {
         errors.sk_document = "Ukuran file maksimal 5MB";
         isValid = false;
       }
-      // Validasi tipe file (PDF)
-      if (files.sk_document.type !== "application/pdf") {
+      // Validasi tipe file (PDF) - lebih fleksibel
+      const isValidPDF = isValidFileType(
+        files.sk_document,
+        ["application/pdf"],
+        [".pdf"]
+      );
+      if (!isValidPDF) {
+        console.error('SK Document type validation failed:', files.sk_document.type);
         errors.sk_document = "File harus berupa PDF";
         isValid = false;
       }
@@ -293,13 +438,26 @@ export default function PuskesmasRegistrationPage() {
 
     // Validasi NPWP Document (OPSIONAL, tapi jika diupload harus valid)
     if (files.npwp_document) {
+      // Log untuk debugging
+      console.log('NPWP Document validation:', {
+        name: files.npwp_document.name,
+        type: files.npwp_document.type,
+        size: files.npwp_document.size,
+      });
+
       if (files.npwp_document.size > 5 * 1024 * 1024) {
         errors.npwp_document = "Ukuran file maksimal 5MB";
         isValid = false;
       }
-      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
-      if (!allowedTypes.includes(files.npwp_document.type)) {
-        errors.npwp_document = "File harus berupa JPG, PNG, atau PDF";
+      // Backend hanya menerima PDF atau JPG/JPEG untuk NPWP (BUKAN PNG)
+      const isValidNPWP = isValidFileType(
+        files.npwp_document,
+        ["image/jpeg", "image/jpg", "application/pdf"],
+        [".jpg", ".jpeg", ".pdf"]
+      );
+      if (!isValidNPWP) {
+        console.error('NPWP Document type validation failed:', files.npwp_document.type);
+        errors.npwp_document = "NPWP harus berformat PDF atau JPG/JPEG";
         isValid = false;
       }
     }
@@ -309,20 +467,54 @@ export default function PuskesmasRegistrationPage() {
       errors.building_photo = "Foto Gedung wajib diupload";
       isValid = false;
     } else {
+      // Log untuk debugging
+      console.log('Building Photo validation:', {
+        name: files.building_photo.name,
+        type: files.building_photo.type,
+        size: files.building_photo.size,
+      });
+
       // Validasi ukuran file (max 5MB)
       if (files.building_photo.size > 5 * 1024 * 1024) {
         errors.building_photo = "Ukuran file maksimal 5MB";
         isValid = false;
       }
-      // Validasi tipe file (Image)
-      const allowedImageTypes = ["image/jpeg", "image/jpg", "image/png"];
-      if (!allowedImageTypes.includes(files.building_photo.type)) {
+      // Validasi tipe file (Image) - lebih fleksibel
+      const isValidImage = isValidFileType(
+        files.building_photo,
+        ["image/jpeg", "image/jpg", "image/png"],
+        [".jpg", ".jpeg", ".png"]
+      );
+      if (!isValidImage) {
+        console.error('Building Photo type validation failed:', files.building_photo.type);
         errors.building_photo = "File harus berupa JPG atau PNG";
         isValid = false;
       }
     }
 
-    setFieldErrors(errors);
+    // Set errors (ini akan meng-overwrite semua error sebelumnya)
+    // Penting: Clear error untuk semua field yang divalidasi, bukan hanya yang ada di object errors
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev };
+      
+      // Field yang divalidasi di step 2
+      const step2Fields: (keyof FieldErrors)[] = ['sk_document', 'npwp_document', 'building_photo'];
+      
+      // Untuk setiap field step 2, set error jika ada, atau hapus jika tidak ada
+      step2Fields.forEach((field) => {
+        if (errors[field]) {
+          newErrors[field] = errors[field];
+        } else {
+          // Clear error jika field valid
+          delete newErrors[field];
+        }
+      });
+      
+      return newErrors;
+    });
+    
+    console.log('Step 2 validation result:', { isValid, errors, fieldErrors: Object.keys(errors) });
+    
     return isValid;
   };
 
@@ -467,24 +659,89 @@ export default function PuskesmasRegistrationPage() {
     try {
       // Upload SK Pendirian (WAJIB)
       if (files.sk_document) {
-        setUploadProgress((prev) => ({ ...prev, sk: true }));
-        await puskesmasRegistrationApi.uploadSKPendirian(puskesmasId, files.sk_document);
-        setUploadProgress((prev) => ({ ...prev, sk: false }));
+        try {
+          setUploadProgress((prev) => ({ ...prev, sk: true }));
+          await puskesmasRegistrationApi.uploadSKPendirian(puskesmasId, files.sk_document);
+          setUploadProgress((prev) => ({ ...prev, sk: false }));
+          // Clear error setelah upload berhasil
+          setFieldErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors.sk_document;
+            return newErrors;
+          });
+          console.log('✅ SK Pendirian upload completed successfully');
+        } catch (error) {
+          setUploadProgress((prev) => ({ ...prev, sk: false }));
+          const errorMsg = error instanceof Error ? error.message : 'Upload SK Pendirian gagal';
+          setFieldErrors((prev) => ({ ...prev, sk_document: errorMsg }));
+          throw error; // Re-throw untuk ditangani di catch block utama
+        }
       }
 
       // Upload NPWP (OPSIONAL)
       if (files.npwp_document) {
-        setUploadProgress((prev) => ({ ...prev, npwp: true }));
-        await puskesmasRegistrationApi.uploadNPWP(puskesmasId, files.npwp_document);
-        setUploadProgress((prev) => ({ ...prev, npwp: false }));
+        try {
+          setUploadProgress((prev) => ({ ...prev, npwp: true }));
+          await puskesmasRegistrationApi.uploadNPWP(puskesmasId, files.npwp_document);
+          setUploadProgress((prev) => ({ ...prev, npwp: false }));
+          // Clear error setelah upload berhasil
+          setFieldErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors.npwp_document;
+            return newErrors;
+          });
+          console.log('✅ NPWP upload completed successfully');
+        } catch (error) {
+          setUploadProgress((prev) => ({ ...prev, npwp: false }));
+          const errorMsg = error instanceof Error ? error.message : 'Upload NPWP gagal';
+          setFieldErrors((prev) => ({ ...prev, npwp_document: errorMsg }));
+          throw error; // Re-throw untuk ditangani di catch block utama
+        }
       }
 
       // Upload Foto Gedung (WAJIB)
       if (files.building_photo) {
-        setUploadProgress((prev) => ({ ...prev, photo: true }));
-        await puskesmasRegistrationApi.uploadFotoGedung(puskesmasId, files.building_photo);
-        setUploadProgress((prev) => ({ ...prev, photo: false }));
+        try {
+          setUploadProgress((prev) => ({ ...prev, photo: true }));
+          await puskesmasRegistrationApi.uploadFotoGedung(puskesmasId, files.building_photo);
+          setUploadProgress((prev) => ({ ...prev, photo: false }));
+          // Clear error setelah upload berhasil
+          setFieldErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors.building_photo;
+            return newErrors;
+          });
+          console.log('✅ Foto Gedung upload completed successfully');
+        } catch (error) {
+          setUploadProgress((prev) => ({ ...prev, photo: false }));
+          const errorMsg = error instanceof Error ? error.message : 'Upload Foto Gedung gagal';
+          setFieldErrors((prev) => ({ ...prev, building_photo: errorMsg }));
+          throw error; // Re-throw untuk ditangani di catch block utama
+        }
       }
+
+      // Clear semua error setelah upload berhasil
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        const hadSkError = !!newErrors.sk_document;
+        const hadNpwpError = !!newErrors.npwp_document;
+        const hadPhotoError = !!newErrors.building_photo;
+        
+        delete newErrors.sk_document;
+        delete newErrors.npwp_document;
+        delete newErrors.building_photo;
+        
+        console.log('Clearing errors after upload:', {
+          hadSkError,
+          hadNpwpError,
+          hadPhotoError,
+          errorsBefore: Object.keys(prev),
+          errorsAfter: Object.keys(newErrors),
+        });
+        
+        return newErrors;
+      });
+      setErrorMessage("");
 
       toast({
         title: "Dokumen Berhasil Diupload",
@@ -502,8 +759,13 @@ export default function PuskesmasRegistrationPage() {
       // Lanjut ke step 3
       setCurrentStep(3);
     } catch (error) {
+      console.error('❌ Upload error in handleStep2Next:', error);
       const errorMsg = error instanceof Error ? error.message : "Upload dokumen gagal. Silakan coba lagi.";
       setErrorMessage(errorMsg);
+      
+      // Pastikan semua upload progress di-reset
+      setUploadProgress({ sk: false, npwp: false, photo: false });
+      
       toast({
         variant: "destructive",
         title: "Upload Gagal",
@@ -881,10 +1143,10 @@ export default function PuskesmasRegistrationPage() {
                   <FileUpload
                     deferUpload={true}
                     onFileChange={(file) => updateFile("npwp_document", file)}
-                    acceptedTypes=".pdf,.jpg,.jpeg,.png"
+                    acceptedTypes=".pdf,.jpg,.jpeg"
                     maxSize={5}
                     uploadText="Upload Gambar/PDF"
-                    subtitle="Format: JPG, PNG, PDF, Maks. 5MB"
+                    subtitle="Format: PDF, JPG, atau JPEG (Maks. 5MB)"
                   />
                   {uploadProgress.npwp && (
                     <p className="text-xs text-blue-600 flex items-center gap-1">
@@ -940,6 +1202,32 @@ export default function PuskesmasRegistrationPage() {
               <p className="text-gray-600">
                 Silakan tentukan titik lokasi Puskesmas pada peta di bawah ini.
                 Pastikan titik koordinat sesuai dengan lokasi fisik.
+              </p>
+            </div>
+
+            {/* Button Deteksi Lokasi Saat Ini */}
+            <div className="mb-4">
+              <Button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                disabled={isGettingLocation}
+                variant="outline"
+                className="flex items-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                {isGettingLocation ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Mendeteksi lokasi...
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="w-4 h-4" />
+                    Deteksi Lokasi Saat Ini
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Klik tombol di atas untuk secara otomatis mendeteksi lokasi Anda saat ini menggunakan GPS
               </p>
             </div>
 
