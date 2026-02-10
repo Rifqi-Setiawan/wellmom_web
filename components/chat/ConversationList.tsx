@@ -1,8 +1,11 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useConversations } from '@/hooks/use-chat';
 import { useIbuHamilNames } from '@/hooks/use-ibu-hamil-names';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { nurseApi } from '@/lib/api/nurse';
 import { buildImageUrl } from '@/lib/utils';
 import type { ConversationWithDetails } from '@/lib/types/chat';
 
@@ -39,10 +42,16 @@ export function ConversationList({
   selectedConversationId,
 }: ConversationListProps) {
   const { conversations, isLoading, error, refresh } = useConversations();
+  const token = useAuthStore((s) => s.token);
   const idsNeedName = conversations
     .filter((c) => !c.ibu_hamil_name?.trim())
     .map((c) => c.ibu_hamil_id);
   const ibuHamilNames = useIbuHamilNames(idsNeedName);
+  
+  // ✅ State untuk menyimpan foto profil yang di-fetch
+  const [photoUrls, setPhotoUrls] = useState<Record<number, string | null>>({});
+  // ✅ Ref untuk tracking foto yang sedang di-fetch (hindari duplicate fetch)
+  const fetchingRef = useRef<Set<number>>(new Set());
 
   /** Nama ibu hamil: dari API chat jika ada, else dari API daftar pasien (getIbuHamilDetail) */
   function getDisplayName(conv: ConversationWithDetails): string {
@@ -52,6 +61,56 @@ export function ConversationList({
       (idsNeedName.includes(conv.ibu_hamil_id) ? 'Memuat...' : 'Ibu Hamil')
     );
   }
+
+  // ✅ Fetch foto profil untuk conversation yang belum punya foto
+  useEffect(() => {
+    if (!token || conversations.length === 0) return;
+
+    const fetchPhotos = async () => {
+      const photosToFetch = conversations
+        .filter((conv) => {
+          // Hanya fetch jika belum ada foto di conversation dan belum di-fetch sebelumnya
+          const existingPhoto = getPhotoUrl(conv);
+          const alreadyFetched = photoUrls[conv.ibu_hamil_id] !== undefined;
+          const isFetching = fetchingRef.current.has(conv.ibu_hamil_id);
+          return !existingPhoto && !alreadyFetched && !isFetching;
+        })
+        .map((conv) => conv.ibu_hamil_id);
+
+      if (photosToFetch.length === 0) return;
+
+      // Mark sebagai sedang di-fetch
+      photosToFetch.forEach((id) => fetchingRef.current.add(id));
+
+      // Fetch foto untuk semua conversation yang perlu
+      const photoPromises = photosToFetch.map(async (ibuHamilId) => {
+        try {
+          const detail = await nurseApi.getIbuHamilDetail(token, ibuHamilId);
+          return {
+            ibuHamilId,
+            photoUrl: detail?.profile_photo_url || null,
+          };
+        } catch (error) {
+          console.error(`Failed to fetch photo for ibu hamil ${ibuHamilId}:`, error);
+          return { ibuHamilId, photoUrl: null };
+        } finally {
+          // Hapus dari fetching set setelah selesai
+          fetchingRef.current.delete(ibuHamilId);
+        }
+      });
+
+      const results = await Promise.all(photoPromises);
+      const newPhotoUrls: Record<number, string | null> = {};
+      results.forEach(({ ibuHamilId, photoUrl }) => {
+        newPhotoUrls[ibuHamilId] = photoUrl;
+      });
+
+      setPhotoUrls((prev) => ({ ...prev, ...newPhotoUrls }));
+    };
+
+    fetchPhotos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, conversations]);
 
   if (isLoading) {
     return (
@@ -96,7 +155,9 @@ export function ConversationList({
         const displayName = getDisplayName(conv);
         const initial = getInitial(displayName);
         const isSelected = conv.id === selectedConversationId;
-        const photoUrl = getPhotoUrl(conv);
+        
+        // ✅ Prioritas: dari conversation -> dari fetched photos -> null
+        const photoUrl = getPhotoUrl(conv) || photoUrls[conv.ibu_hamil_id] || null;
         const imageUrl = photoUrl ? buildImageUrl(photoUrl) : null;
 
         return (
@@ -118,29 +179,28 @@ export function ConversationList({
               isSelected ? 'bg-[#3B9ECF] text-white' : 'hover:bg-gray-50'
             }`}
           >
-            {/* Avatar dengan foto profil atau fallback */}
-            <div className="relative w-12 h-12 shrink-0">
+            {/* ✅ Avatar dengan struktur sama seperti sidebar perawat */}
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg overflow-hidden shrink-0 relative ${
+              isSelected ? 'bg-white/20' : 'bg-[#3B9ECF]'
+            }`}>
               {imageUrl ? (
                 <img
                   src={imageUrl}
                   alt={displayName}
-                  className="w-full h-full rounded-full object-cover border-2 border-gray-200"
-                  onError={(e) => {
-                    // Fallback ke initial jika gambar gagal load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const fallback = target.nextElementSibling as HTMLElement;
-                    if (fallback) fallback.style.display = 'flex';
+                  className="w-full h-full object-cover absolute inset-0"
+                  onError={() => {
+                    // Hapus dari state jika gambar gagal load
+                    setPhotoUrls((prev) => {
+                      const updated = { ...prev };
+                      updated[conv.ibu_hamil_id] = null;
+                      return updated;
+                    });
                   }}
                 />
               ) : null}
-              <div
-                className={`w-full h-full rounded-full flex items-center justify-center text-sm font-semibold ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-[#3B9ECF] text-white'
-                } ${imageUrl ? 'absolute inset-0 hidden' : ''}`}
-              >
+              <span className={imageUrl ? 'invisible' : 'visible'}>
                 {initial}
-              </div>
+              </span>
             </div>
             
             <div className="min-w-0 flex-1 flex flex-col gap-1">

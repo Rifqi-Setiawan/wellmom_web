@@ -49,7 +49,7 @@ export class ChatWebSocketManager {
     let authToken = token;
     if (!authToken) {
       const authState = useAuthStore.getState();
-      authToken = authState.token || null;
+      authToken = authState.token || undefined;
       if (!authToken) {
         console.error('WebSocket: No token provided and no token in Auth Store');
         this.onError?.(new Event('no_token'));
