@@ -11,7 +11,7 @@ import type {
 } from '@/lib/types/auth';
 
 // Base API URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://103.191.92.29:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://api.wellmom-innovilage.com';
 
 // Debug: Log API URL
 console.log('🔌 WellMom API Base URL:', API_BASE_URL);
